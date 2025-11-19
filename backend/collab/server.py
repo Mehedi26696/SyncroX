@@ -3,6 +3,7 @@ import threading
 from collections import defaultdict
 from pathlib import Path
 import os
+import time
 
 HOST = "0.0.0.0"
 PORT = 9011  # collab server port
@@ -17,6 +18,8 @@ docs: dict[str, str] = {}
 room_clients: dict[str, set[socket.socket]] = defaultdict(set)
 # client -> username
 clients: dict[socket.socket, str] = {}
+# room -> username -> last time they did a SET (used to detect "typing")
+room_user_last_set: dict[str, dict[str, float]] = defaultdict(dict)
 
 lock = threading.Lock()
 
@@ -26,6 +29,7 @@ def valid_room(room: str) -> bool:
 
 
 def load_doc(room: str) -> str:
+    """Load document content for a room from disk or return default text."""
     path = DOC_DIR / f"{room}.txt"
     if path.exists():
         return path.read_text(encoding="utf-8")
@@ -34,6 +38,7 @@ def load_doc(room: str) -> str:
 
 
 def save_doc(room: str, content: str) -> None:
+    """Persist document content for a room to disk."""
     path = DOC_DIR / f"{room}.txt"
     path.write_text(content, encoding="utf-8")
 
@@ -45,9 +50,19 @@ def send_line(conn: socket.socket, text: str):
         pass
 
 
-def broadcast_doc(room: str, content: str, exclude: socket.socket | None = None):
+def broadcast_doc(
+    room: str,
+    content: str,
+    editor: str,
+    exclude: socket.socket | None = None,
+):
+    """
+    Send updated document to all clients in a room, tagging who edited it.
+    DOC <room> <size> <editor>\n
+    <code_bytes>
+    """
     data = content.encode("utf-8")
-    header = f"DOC {room} {len(data)}\n".encode("utf-8")
+    header = f"DOC {room} {len(data)} {editor}\n".encode("utf-8")
 
     with lock:
         targets = list(room_clients.get(room, set()))
@@ -66,6 +81,7 @@ def handle_client(conn: socket.socket, addr):
     print(f"[COLLAB] New connection from {addr}")
     f = conn.makefile("rwb")
     current_room: str | None = None
+    username = "user"
 
     try:
         # Optional HELLO <username>
@@ -76,10 +92,10 @@ def handle_client(conn: socket.socket, addr):
         parts = header.split(maxsplit=1)
         if len(parts) == 2 and parts[0].upper() == "HELLO":
             username = parts[1].strip()
-        else:
-            username = "user"
+
         with lock:
             clients[conn] = username
+
         send_line(conn, f"OK Hello {username}")
 
         while True:
@@ -109,12 +125,15 @@ def handle_client(conn: socket.socket, addr):
                         docs[room] = load_doc(room)
                     room_clients[room].add(conn)
                     current_room = room
+                    # touch last_set dict so USERS has an entry
+                    _ = room_user_last_set[room]
 
                 send_line(conn, f"OK Joined {room}")
                 # send current document
                 content = docs[room]
                 data = content.encode("utf-8")
-                header = f"DOC {room} {len(data)}\n".encode("utf-8")
+                # when you first join, treat 'server' as editor
+                header = f"DOC {room} {len(data)} server\n".encode("utf-8")
                 try:
                     conn.sendall(header)
                     conn.sendall(data)
@@ -155,10 +174,12 @@ def handle_client(conn: socket.socket, addr):
                 with lock:
                     docs[room] = content
                     save_doc(room, content)
+                    editor = clients.get(conn, "someone")
+                    room_user_last_set[room][editor] = time.time()
 
                 send_line(conn, f"OK SAVED {room}")
-                broadcast_doc(room, content, exclude=conn)
-                print(f"[COLLAB] Updated document in room {room} (from {username})")
+                broadcast_doc(room, content, editor=editor, exclude=conn)
+                print(f"[COLLAB] Updated document in room {room} (from {editor})")
 
             elif cmd == "GET":
                 # GET <room>
@@ -174,12 +195,36 @@ def handle_client(conn: socket.socket, addr):
                         docs[room] = load_doc(room)
                     content = docs[room]
                 data = content.encode("utf-8")
-                header = f"DOC {room} {len(data)}\n".encode("utf-8")
+                header = f"DOC {room} {len(data)} server\n".encode("utf-8")
                 try:
                     conn.sendall(header)
                     conn.sendall(data)
                 except OSError:
                     break
+
+            elif cmd == "USERS":
+                # USERS <room>
+                if len(parts) < 2:
+                    send_line(conn, "ERROR USERS needs room")
+                    continue
+                room = parts[1]
+                if not valid_room(room):
+                    send_line(conn, "ERROR Invalid room code")
+                    continue
+
+                with lock:
+                    now = time.time()
+                    members = room_clients.get(room, set())
+                    entries: list[str] = []
+                    for c in members:
+                        uname = clients.get(c, "user")
+                        last_set = room_user_last_set[room].get(uname, 0.0)
+                        typing = (now - last_set) < 3.0  # last 3s -> typing
+                        status = "typing" if typing else "idle"
+                        entries.append(f"{uname}:{status}")
+                    payload = ",".join(entries)
+
+                send_line(conn, f"USERS {room} {payload}")
 
             elif cmd == "BYE":
                 send_line(conn, "OK Bye")
@@ -200,6 +245,7 @@ def handle_client(conn: socket.socket, addr):
                     members.remove(conn)
                     if not members:
                         room_clients.pop(room, None)
+                        room_user_last_set.pop(room, None)
         try:
             conn.close()
         except OSError:
@@ -208,6 +254,7 @@ def handle_client(conn: socket.socket, addr):
 
 def main():
     print(f"[COLLAB] TCP collab server starting on {HOST}:{PORT}")
+    print(f"[COLLAB] Docs directory: {DOC_DIR}")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((HOST, PORT))
