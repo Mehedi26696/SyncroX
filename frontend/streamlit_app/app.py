@@ -94,164 +94,9 @@ def home_page():
                   on_click=go_to, args=("dashboard",))
 
 
-def chat_page():
-    # Auto-refresh this page every 1500 ms (1.5 seconds)
-    st_autorefresh(interval=1500, key="chat_refresh")
-
-    st.header("💬 Chat")
-
-    # Back to home button
-    if st.button("⬅ Back to Home", key="chat_back"):
-        go_to("home")
-        return
-
-    # --- 1. initialize session state variables ---
-    if "chat_client" not in st.session_state:
-        st.session_state.chat_client = None
-    if "chat_log" not in st.session_state:
-        st.session_state.chat_log: List[str] = []
-    if "chat_status" not in st.session_state:
-        st.session_state["chat_status"] = ""
-
-    client: Optional[TcpChatClient] = st.session_state.chat_client
-
-    # --- 2. If not connected, show username + connect form ---
-    if client is None:
-        st.subheader("Connect to chat server")
-
-        username = st.text_input("Username", key="chat_username")
-
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            connect_clicked = st.button("Connect", type="primary", use_container_width=True)
-        with col2:
-            st.caption("Server: 127.0.0.1:9009 (your TCP server)")
-
-        if connect_clicked:
-            if not username.strip():
-                st.warning("Please enter a username.")
-            else:
-                try:
-                    st.session_state.chat_client = TcpChatClient(
-                        host="127.0.0.1",
-                        port=9009,
-                        username=username.strip(),
-                    )
-                    st.success("Connected to chat server 🎉")
-                    st.session_state.chat_log.append("🛈 Connected to server.")
-                    # No need for st.rerun; autorefresh will pick it up
-                except Exception as e:
-                    st.error(f"Could not connect to server: {e}")
-        return
-
-    # --- 3. If connected, drain messages from server into chat_log ---
-    client = st.session_state.chat_client
-    new_lines = client.get_new_messages()
-    if new_lines:
-        for line in new_lines:
-            # Basic parsing of protocol
-            if line.startswith("MSG "):
-                # Format: "MSG 1858 username: message"
-                parts = line.split(maxsplit=2)
-                if len(parts) >= 3:
-                    st.session_state.chat_log.append(parts[2])  # "username: message"
-            elif line.startswith("SYSTEM "):
-                st.session_state.chat_log.append(f"🛈 {line[7:]}")
-            elif line.startswith("ROOM "):
-                parts = line.split()
-                if len(parts) >= 2:
-                    st.session_state.chat_log.append(f"✅ Room created: {parts[1]}")
-            elif line.startswith("OK Joined"):
-                parts = line.split()
-                if len(parts) >= 3:
-                    st.session_state.chat_log.append(f"✅ Joined room: {parts[2]}")
-            elif line.startswith("ROOMS "):
-                st.session_state.chat_log.append(f"📋 Available rooms: {line[6:]}")
-            elif line.startswith("ERROR "):
-                st.session_state.chat_log.append(f"❌ {line[6:]}")
-            else:
-                # Any other line, just show raw
-                st.session_state.chat_log.append(line)
-
-    # --- 4. Show current room status + controls ---
-    col_left, col_right = st.columns([2, 1])
-
-    with col_left:
-        room_label = client.current_room or "Not joined"
-        st.markdown(f"**Current room:** `{room_label}`")
-
-    with col_right:
-        if st.button("Disconnect", use_container_width=True):
-            try:
-                client.close()
-            except Exception:
-                pass
-            st.session_state.chat_client = None
-            st.session_state.chat_log = []
-            st.info("Disconnected from chat server.")
-            return
-
-    st.divider()
-
-    # Room management
-    col1, col2, col3 = st.columns([1, 1, 1])
-
-    with col1:
-        if st.button("➕ Create room", use_container_width=True):
-            client.create_room()
-            st.info("Room creation requested (watch chat log for code).")
-
-    with col2:
-        join_code = st.text_input("Join room code", key="join_room_code", max_chars=4)
-        if st.button("🔑 Join room", use_container_width=True):
-            if not join_code.strip():
-                st.warning("Enter a room code to join.")
-            else:
-                client.join_room(join_code.strip())
-                st.info(f"Joining room {join_code.strip()}…")
-
-    with col3:
-        if st.button("📋 List rooms", use_container_width=True):
-            client.list_rooms()
-            st.info("Requested room list (watch chat log).")
-
-    st.divider()
-
-    # --- 5. Show chat log ---
-    if st.session_state.chat_log:
-        st.text_area(
-            "Chat log",
-            "\n".join(st.session_state.chat_log),
-            height=300,
-            disabled=True,
-        )
-    else:
-        st.info("No messages yet. Create or join a room, then send something!")
-
-    # --- 6. Send message UI (with callback) ---
-    msg = st.text_input(
-        "Type your message",
-        key="chat_message",
-        placeholder="Hello world"
-    )
-
-    send_col1, send_col2 = st.columns([1, 3])
-    with send_col1:
-        st.button(
-            "Send",
-            use_container_width=True,
-            key="chat_send_btn",
-            on_click=send_chat_message,
-        )
-
-    status = st.session_state.get("chat_status", "")
-    if status:
-        st.warning(status)
-
-
 def collab_page():
-    # Auto-refresh every 1.5 seconds so remote updates show up
-    st_autorefresh(interval=1500, key="collab_refresh")
+    # Auto-refresh every 1 second so remote updates and auto-sync happen
+    st_autorefresh(interval=1000, key="collab_refresh")
 
     st.header("🤝 Collab – TCP Shared Code Editor")
 
@@ -263,7 +108,6 @@ def collab_page():
     if "collab_room" not in st.session_state:
         st.session_state.collab_room = ""
     if "collab_editor" not in st.session_state:
-        # this is the text inside the editor widget
         st.session_state.collab_editor = ""
     if "collab_status" not in st.session_state:
         st.session_state.collab_status = ""
@@ -271,6 +115,10 @@ def collab_page():
         st.session_state.collab_language = "python"
     if "collab_output" not in st.session_state:
         st.session_state.collab_output = ""
+    if "collab_last_sent" not in st.session_state:
+        st.session_state.collab_last_sent = ""
+    if "collab_last_sent_time" not in st.session_state:
+        st.session_state.collab_last_sent_time = 0.0
 
     client: TcpCollabClient | None = st.session_state.collab_client
 
@@ -279,9 +127,9 @@ def collab_page():
         st.subheader("Connect to collab server")
 
         username = st.text_input("Username", key="collab_username")
-        room = st.text_input(
+        room_input = st.text_input(
             "Room code (4 digits, same as chat/file)",
-            key="collab_room",
+            key="collab_room_input",
             max_chars=4,
         )
 
@@ -293,18 +141,23 @@ def collab_page():
             if not username.strip():
                 st.warning("Enter a username.")
                 return
-            if not (room and len(room) == 4 and room.isdigit()):
+            if not (room_input and len(room_input) == 4 and room_input.isdigit()):
                 st.warning("Enter a valid 4-digit room code.")
                 return
             try:
                 client = TcpCollabClient(
                     host="127.0.0.1", port=9011, username=username.strip()
                 )
-                client.join_room(room.strip())
+                client.join_room(room_input.strip())
+
+                # remember room + initialise last_sent
+                st.session_state.collab_room = room_input.strip()
                 st.session_state.collab_client = client
                 st.session_state.collab_status = (
-                    f"Connected as {username.strip()} to room {room.strip()}."
+                    f"Connected as {username.strip()} to room {room_input.strip()}."
                 )
+                st.session_state.collab_last_sent = ""
+                st.session_state.collab_last_sent_time = 0.0
             except Exception as e:
                 st.error(f"Could not connect to collab server: {e}")
                 return
@@ -332,43 +185,57 @@ def collab_page():
             st.session_state.collab_status = "Disconnected from collab server."
             return
 
-    # --- PULL remote updates from server ---
-    # If anyone else saved, server broadcasted DOC; recv_loop put it in queue.
+    # --- PULL remote updates from server (other users' saves/auto-sync) ---
     new_doc = client.get_latest_doc()
     if new_doc is not None and new_doc != st.session_state.collab_editor:
-        # CRITICAL: update the editor widget state itself
         st.session_state.collab_editor = new_doc
+        # update last_sent so we don't immediately echo back
+        st.session_state.collab_last_sent = new_doc
 
     st.markdown("### Shared code")
 
     # Language selector (UI only for now)
     st.session_state.collab_language = st.selectbox(
         "Language",
-        ["python"],  # extend later
+        ["python"],
         index=0,
         key="collab_language_select",
     )
 
-    # Editor — uses widget state 'collab_editor' as the single source of truth
+    # Editor – widget state is the source of truth
     code = st.text_area(
         "Code",
         height=350,
         key="collab_editor",
     )
 
-    # ---------- Save button: push current code to server ----------
+    # ---------- AUTO-SYNC: push local edits every ~1s ----------
+    now = time.time()
+    if (
+        code != st.session_state.collab_last_sent
+        and now - st.session_state.collab_last_sent_time > 1.0  # throttle
+    ):
+        try:
+            client.set_code(room, code)
+            st.session_state.collab_last_sent = code
+            st.session_state.collab_last_sent_time = now
+            st.session_state.collab_status = "Synced changes to room."
+        except Exception as e:
+            st.session_state.collab_status = f"Error syncing: {e}"
+
+    # ---------- Manual Save (still there, for demo) ----------
     col_save1, col_save2, col_save3 = st.columns([1, 1, 3])
     with col_save1:
         if st.button("💾 Save to room", use_container_width=True):
             try:
                 client.set_code(room, code)
-                st.session_state.collab_status = (
-                    "Saved code to room (broadcast to others)."
-                )
+                st.session_state.collab_last_sent = code
+                st.session_state.collab_last_sent_time = time.time()
+                st.session_state.collab_status = "Saved code to room (broadcast to others)."
             except Exception as e:
                 st.session_state.collab_status = f"Error saving: {e}"
 
-    # ---------- Run button (still local, no Docker yet) ----------
+    # ---------- Run button (local exec, same as before) ----------
     with col_save2:
         run_clicked = st.button("▶ Run", use_container_width=True)
 
@@ -379,7 +246,6 @@ def collab_page():
         if lang == "python":
             try:
                 import tempfile
-
                 with tempfile.NamedTemporaryFile(
                     "w", suffix=".py", delete=False, encoding="utf-8"
                 ) as tf:
@@ -419,11 +285,13 @@ def collab_page():
     )
 
     st.caption(
-        "Any user in the same 4-digit room shares one document. "
-        "When someone hits 'Save to room', the server updates the room document "
-        "and broadcasts a DOC message over TCP; other clients pull it on refresh "
-        "and update their editor."
+        "We use a custom TCP protocol (JOIN / SET / DOC). "
+        "Each client auto-sends edits about once per second and pulls updates "
+        "from the server every 1.5 seconds, so users in the same room see each "
+        "other's code almost live (last writer wins)."
     )
+
+
 
 
 
