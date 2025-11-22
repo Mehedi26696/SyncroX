@@ -11,6 +11,8 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 ROOT_UPLOAD_DIR = BASE_DIR / "data" / "uploads"
 os.makedirs(ROOT_UPLOAD_DIR, exist_ok=True)
 
+CHUNK_SIZE = 4096
+
 
 def get_room_dir(room: str) -> Path | None:
     """Validate room code and return its directory path."""
@@ -23,119 +25,159 @@ def get_room_dir(room: str) -> Path | None:
 
 def handle_client(conn: socket.socket, addr):
     print(f"[FILE] New connection from {addr}")
-    file = conn.makefile("rb")  # binary read
-
+    
+    # Use a buffer to accumulate bytes until we find a complete line
+    buffer = b""
+    
     try:
         while True:
-            line = file.readline()
-            if not line:
+            # Read data in small chunks to find command lines
+            data = conn.recv(1024)
+            if not data:
                 break
-            line = line.decode("utf-8").strip()
-            if not line:
-                continue
-
-            parts = line.split()
-            cmd = parts[0].upper()
-
-            if cmd == "UPLOAD":
-                # UPLOAD <room> <filename> <size>
-                if len(parts) < 4:
-                    conn.sendall(b"ERROR Invalid UPLOAD syntax\n")
-                    continue
-                room = parts[1]
-                room_dir = get_room_dir(room)
-                if room_dir is None:
-                    conn.sendall(b"ERROR Invalid room code\n")
-                    continue
-
-                filename = parts[2]
+            
+            buffer += data
+            
+            # Look for a complete line (ending with \n)
+            while b"\n" in buffer:
+                line_end = buffer.index(b"\n")
+                line_bytes = buffer[:line_end]
+                buffer = buffer[line_end + 1:]  # Remove the processed line
+                
                 try:
-                    size = int(parts[3])
-                except ValueError:
-                    conn.sendall(b"ERROR Invalid size\n")
+                    line = line_bytes.decode("utf-8").strip()
+                except UnicodeDecodeError:
+                    conn.sendall(b"ERROR Invalid command encoding\n")
+                    continue
+                
+                if not line:
                     continue
 
-                dest = room_dir / filename
-                remaining = size
-                try:
-                    with dest.open("wb") as f:
-                        # receive file in chunks
-                        while remaining > 0:
-                            chunk = file.read(min(4096, remaining))
+                parts = line.split()
+                cmd = parts[0].upper()
+
+                if cmd == "UPLOAD":
+                    # UPLOAD <room> <filename> <size>
+                    if len(parts) < 4:
+                        conn.sendall(b"ERROR Invalid UPLOAD syntax\n")
+                        continue
+                    room = parts[1]
+                    room_dir = get_room_dir(room)
+                    if room_dir is None:
+                        conn.sendall(b"ERROR Invalid room code\n")
+                        continue
+
+                    filename = parts[2]
+                    try:
+                        size = int(parts[3])
+                    except ValueError:
+                        conn.sendall(b"ERROR Invalid size\n")
+                        continue
+
+                    dest = room_dir / filename
+                    remaining = size
+                    seq = 1
+                    try:
+                        with dest.open("wb") as f:
+                            # receive file in chunks and ACK each chunk
+                            while remaining > 0:
+                                # First check if we have data in buffer
+                                if buffer:
+                                    chunk = buffer[:min(CHUNK_SIZE, remaining)]
+                                    buffer = buffer[len(chunk):]
+                                else:
+                                    # Read from socket
+                                    chunk = conn.recv(min(CHUNK_SIZE, remaining))
+                                    if not chunk:
+                                        break
+                                
+                                f.write(chunk)
+                                remaining -= len(chunk)
+                                # per-chunk ACK so client can measure RTT
+                                ack_line = f"ACK {room} {seq}\n".encode("utf-8")
+                                conn.sendall(ack_line)
+                                seq += 1
+
+                        if remaining != 0:
+                            conn.sendall(b"ERROR Incomplete upload\n")
+                            # optionally remove partial file
+                            if dest.exists():
+                                dest.unlink()
+                            print(f"[FILE] Incomplete upload for {filename} from {addr}")
+                        else:
+                            conn.sendall(b"OK SAVED\n")
+                            print(
+                                f"[FILE] Saved {filename} ({size} bytes) "
+                                f"in room {room} from {addr}"
+                            )
+                    except Exception as e:
+                        print(f"[FILE] Error saving {filename}: {e}")
+                        print(f"[FILE] Error saving {filename}: {e}")
+                        conn.sendall(b"ERROR Save failed\n")
+
+                elif cmd == "LIST":
+                    # LIST <room>
+                    if len(parts) < 2:
+                        conn.sendall(b"ERROR LIST needs room code\n")
+                        continue
+                    room = parts[1]
+                    room_dir = get_room_dir(room)
+                    if room_dir is None:
+                        conn.sendall(b"ERROR Invalid room code\n")
+                        continue
+
+                    files = []
+                    for p in room_dir.iterdir():
+                        if p.is_file():
+                            st = p.stat()
+                            created = datetime.datetime.fromtimestamp(
+                                st.st_ctime
+                            ).isoformat(timespec="seconds")
+                            files.append((p.name, st.st_size, created))
+                    # sort newest first
+                    files.sort(key=lambda x: x[2], reverse=True)
+                    header = f"FILES {len(files)}\n"
+                    conn.sendall(header.encode("utf-8"))
+                    for name, size, created in files:
+                        line = f"{name} {size} {created}\n"
+                        conn.sendall(line.encode("utf-8"))
+
+                elif cmd == "DOWNLOAD":
+                    # DOWNLOAD <room> <filename>
+                    if len(parts) < 3:
+                        conn.sendall(b"ERROR DOWNLOAD needs room and filename\n")
+                        continue
+                    room = parts[1]
+                    room_dir = get_room_dir(room)
+                    if room_dir is None:
+                        conn.sendall(b"ERROR Invalid room code\n")
+                        continue
+
+                    filename = parts[2]
+                    path = room_dir / filename
+                    if not path.exists() or not path.is_file():
+                        conn.sendall(b"ERROR NotFound\n")
+                        continue
+                    size = path.stat().st_size
+                    header = f"OK {size}\n"
+                    conn.sendall(header.encode("utf-8"))
+                    with path.open("rb") as f:
+                        while True:
+                            chunk = f.read(4096)
                             if not chunk:
                                 break
-                            f.write(chunk)
-                            remaining -= len(chunk)
-                    if remaining != 0:
-                        conn.sendall(b"ERROR Incomplete upload\n")
-                        # optionally remove partial file
-                        if dest.exists():
-                            dest.unlink()
-                    else:
-                        conn.sendall(b"OK SAVED\n")
-                        print(f"[FILE] Saved {filename} ({size} bytes) in room {room} from {addr}")
-                except Exception as e:
-                    print(f"[FILE] Error saving {filename}: {e}")
-                    conn.sendall(b"ERROR Save failed\n")
+                            conn.sendall(chunk)
+                    print(
+                        f"[FILE] Sent {filename} ({size} bytes) "
+                        f"from room {room} to {addr}"
+                    )
 
-            elif cmd == "LIST":
-                # LIST <room>
-                if len(parts) < 2:
-                    conn.sendall(b"ERROR LIST needs room code\n")
-                    continue
-                room = parts[1]
-                room_dir = get_room_dir(room)
-                if room_dir is None:
-                    conn.sendall(b"ERROR Invalid room code\n")
-                    continue
+                elif cmd == "BYE":
+                    conn.sendall(b"OK Bye\n")
+                    break
 
-                files = []
-                for p in room_dir.iterdir():
-                    if p.is_file():
-                        st = p.stat()
-                        created = datetime.datetime.fromtimestamp(st.st_ctime).isoformat(timespec="seconds")
-                        files.append((p.name, st.st_size, created))
-                # sort newest first
-                files.sort(key=lambda x: x[2], reverse=True)
-                header = f"FILES {len(files)}\n"
-                conn.sendall(header.encode("utf-8"))
-                for name, size, created in files:
-                    line = f"{name} {size} {created}\n"
-                    conn.sendall(line.encode("utf-8"))
-
-            elif cmd == "DOWNLOAD":
-                # DOWNLOAD <room> <filename>
-                if len(parts) < 3:
-                    conn.sendall(b"ERROR DOWNLOAD needs room and filename\n")
-                    continue
-                room = parts[1]
-                room_dir = get_room_dir(room)
-                if room_dir is None:
-                    conn.sendall(b"ERROR Invalid room code\n")
-                    continue
-
-                filename = parts[2]
-                path = room_dir / filename
-                if not path.exists() or not path.is_file():
-                    conn.sendall(b"ERROR NotFound\n")
-                    continue
-                size = path.stat().st_size
-                header = f"OK {size}\n"
-                conn.sendall(header.encode("utf-8"))
-                with path.open("rb") as f:
-                    while True:
-                        chunk = f.read(4096)
-                        if not chunk:
-                            break
-                        conn.sendall(chunk)
-                print(f"[FILE] Sent {filename} ({size} bytes) from room {room} to {addr}")
-
-            elif cmd == "BYE":
-                conn.sendall(b"OK Bye\n")
-                break
-
-            else:
-                conn.sendall(b"ERROR Unknown command\n")
+                else:
+                    conn.sendall(b"ERROR Unknown command\n")
 
     except Exception as e:
         print(f"[FILE] Error with client {addr}: {e}")

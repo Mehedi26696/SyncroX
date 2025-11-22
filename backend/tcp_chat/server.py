@@ -97,9 +97,9 @@ def handle_client(conn: socket.socket, addr):
                     continue
                 room_code = rest[0].strip()
                 with lock:
+                    # Auto-create room if it doesn't exist (for flexible room codes)
                     if room_code not in rooms:
-                        send_line(conn, "ERROR Room does not exist")
-                        continue
+                        rooms[room_code] = set()
                     rooms[room_code].add(conn)
                 room_joined = room_code
                 send_line(conn, f"OK Joined {room_code}")

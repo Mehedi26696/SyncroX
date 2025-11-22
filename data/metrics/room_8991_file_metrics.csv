@@ -1,0 +1,2 @@
+ts,room,file,direction,seq,bytes,rtt_ms,srtt_ms,rto_ms,cwnd,ssthresh,event,algo
+1763794766.077478,8991,full.svg,upload,1,97,0.8158683776855469,0.8158683776855469,2.4476051330566406,2.0,8.0,ACK,tahoe
