@@ -25,7 +25,7 @@ page_icon = Image.open(icon_path) if os.path.exists(icon_path) else "🤝"
 
 st.set_page_config(page_title="Code Editor - SyncroX", page_icon=page_icon, layout="wide")
 
-# Apply custom CSS for Raleway font and black background
+# Apply custom CSS for Raleway font, black background & SyncroX theme
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
@@ -44,11 +44,104 @@ st.markdown("""
     
     [data-testid="stSidebar"] {
         background-color: #0a0a0a;
+        border-right: 1px solid rgba(3, 192, 132, 0.25);
     }
     
-    h1, h2, h3, h4, h5, h6, p, div, span, label, button {
+    h1, h2, h3, h4, h5, h6 {
         font-family: 'Raleway', sans-serif !important;
+        color: #f9fafb !important;
     }
+
+    p, div, span, label {
+        font-family: 'Raleway', sans-serif !important;
+        color: #e5e7eb;
+    }
+
+    /* Sidebar headings */
+    [data-testid="stSidebar"] h3 {
+        color: #03C084 !important;
+        font-weight: 700 !important;
+    }
+
+    /* Sidebar info box */
+    .stAlert {
+        background-color: #0d0d0d !important;
+        border-left: 4px solid #03C084 !important;
+        color: #e5e7eb !important;
+    }
+
+    /* Sidebar navigation buttons */
+    [data-testid="stSidebar"] button {
+        background-color: #03C084 !important;
+        color: #020617 !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 700 !important;
+        margin-bottom: 8px !important;
+        padding: 0.45rem 0.8rem !important;
+    }
+    [data-testid="stSidebar"] button:hover {
+        background-color: #02a673 !important;
+        color: #f9fafb !important;
+    }
+
+    /* Disabled nav (current page) */
+    [data-testid="stSidebar"] button[disabled] {
+        background-color: #064e3b !important;
+        color: #9ca3af !important;
+        opacity: 0.9 !important;
+    }
+
+    /* Logout secondary button */
+    button[kind="secondary"] {
+        background-color: #111827 !important;
+        color: #e5e7eb !important;
+        border: 1px solid #374151 !important;
+    }
+    button[kind="secondary"]:hover {
+        border-color: #03C084 !important;
+        background-color: #1f2933 !important;
+    }
+
+    /* Global primary buttons (outside sidebar) */
+    div.stButton > button {
+        background-color: #03C084 !important;
+        color: #020617 !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 800 !important;
+    }
+    div.stButton > button:hover {
+        background-color: #02a673 !important;
+        color: #f9fafb !important;
+    }
+
+    /* Selectbox styling (language) */
+    .stSelectbox label {
+        color: #e5e7eb !important;
+        font-weight: 500 !important;
+    }
+
+    /* Textareas (code editor, stdin, output) */
+    .stTextArea textarea {
+        background-color: #020617 !important;
+        color: #e5e7eb !important;
+        border-radius: 12px !important;
+        border: 1px solid #1f2933 !important;
+        font-family: "JetBrains Mono", "Fira Code", "Source Code Pro", monospace !important;
+        font-size: 0.9rem !important;
+    }
+    .stTextArea textarea:focus {
+        border-color: #03C084 !important;
+        box-shadow: 0 0 0 1px #03C084 !important;
+        outline: none !important;
+    }
+
+    /* Info/status captions */
+    .stCaption, .stMarkdown small {
+        color: #9ca3af !important;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -122,7 +215,7 @@ if "collab_stdin" not in st.session_state:
 if "exec_client" not in st.session_state:
     st.session_state.exec_client = None
 
-st.header("🤝 Collaborative Code Editor")
+st.header("Collaborative Code Editor")
 st.caption(f"Room: `{st.session_state.current_room}` • User: `{st.session_state.username}`")
 
 client = st.session_state.collab_client
@@ -251,8 +344,8 @@ if run_clicked:
                 if out_text:
                     output += out_text
                 if err_text:
-                    if output and not output.endswith("\n"):
-                        output += "\n"
+                    if output and not output.endswith("\\n"):
+                        output += "\\n"
                     output += err_text
 
                 st.session_state.collab_output = output

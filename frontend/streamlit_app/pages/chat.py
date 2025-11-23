@@ -24,7 +24,7 @@ page_icon = Image.open(icon_path) if os.path.exists(icon_path) else "💬"
 
 st.set_page_config(page_title="Chat - SyncroX", page_icon=page_icon, layout="wide")
 
-# Apply custom CSS for Raleway font and black background
+# Apply custom CSS for Raleway font and black background + SyncroX theme
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
@@ -43,11 +43,87 @@ st.markdown("""
     
     [data-testid="stSidebar"] {
         background-color: #0a0a0a;
+        border-right: 1px solid rgba(3, 192, 132, 0.25);
     }
     
     h1, h2, h3, h4, h5, h6, p, div, span, label, button {
         font-family: 'Raleway', sans-serif !important;
+        color: #f9fafb;
     }
+
+    /* Sidebar headings */
+    [data-testid="stSidebar"] h3 {
+        color: #03C084 !important;
+        font-weight: 700 !important;
+    }
+
+    /* Sidebar info box */
+    .stAlert {
+        background-color: #0d0d0d !important;
+        border-left: 4px solid #03C084 !important;
+        color: #e5e7eb !important;
+    }
+
+    /* Global buttons (SyncroX green) */
+    div.stButton > button {
+        background-color: #03C084 !important;
+        color: #020617 !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 800 !important;
+        padding: 0.4rem 0.8rem !important;
+    }
+    div.stButton > button:hover {
+        background-color: #02a673 !important;
+        color: #f9fafb !important;
+    }
+
+    /* Sidebar-specific buttons */
+    [data-testid="stSidebar"] button {
+        background-color: #03C084 !important;
+        color: #020617 !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 700 !important;
+        margin-bottom: 8px !important;
+    }
+    [data-testid="stSidebar"] button:hover {
+        background-color: #02a673 !important;
+        color: #f9fafb !important;
+    }
+
+    /* Disabled nav button (current page) */
+    [data-testid="stSidebar"] button[disabled] {
+        background-color: #064e3b !important;
+        color: #9ca3af !important;
+        opacity: 0.9 !important;
+    }
+
+    /* Logout secondary button */
+    button[kind="secondary"] {
+        background-color: #111827 !important;
+        color: #e5e7eb !important;
+        border: 1px solid #374151 !important;
+    }
+    button[kind="secondary"]:hover {
+        border-color: #03C084 !important;
+        background-color: #1f2933 !important;
+    }
+
+    /* Text input styling (chat box) */
+    .stTextInput>div>div>input {
+        background-color: #020617 !important;
+        color: #e5e7eb !important;
+        border-radius: 999px !important;
+        border: 1px solid #1f2933 !important;
+        padding: 0.4rem 0.9rem !important;
+    }
+    .stTextInput>div>div>input:focus {
+        border-color: #03C084 !important;
+        box-shadow: 0 0 0 1px #03C084 !important;
+        outline: none !important;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -136,7 +212,7 @@ if "chat_room" not in st.session_state:
 if "chat_message" not in st.session_state:
     st.session_state.chat_message = ""
 
-st.header("💬 Real-time Chat")
+st.header("Real-time Chat")
 st.caption(f"Room: `{st.session_state.current_room}` • User: `{st.session_state.username}`")
 
 client = st.session_state.chat_client
@@ -214,26 +290,27 @@ for line in new_lines:
 # ---------- Chat interface ----------
 st.markdown("### Messages")
 
-# Custom CSS for chat bubbles
+# Custom CSS for chat bubbles (Messenger/SyncroX hybrid)
 st.markdown("""
 <style>
 .chat-message {
     padding: 8px 12px;
     border-radius: 18px;
     margin: 6px 0;
-    max-width: 22%;               /* 🔹 Narrower, like Messenger */
+    max-width: 22%;
     word-wrap: break-word;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: 'Raleway', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 0.9rem;
     line-height: 1.4;
+    background-color: #111827;
 }
 
-/* Me (right side – green bubble) */
+/* Me (right side – SyncroX green bubble) */
 .message-me {
     margin-left: auto;
     text-align: left;
-    background: #00a884;          /* WhatsApp/Messenger style green */
-    color: #f9fafb;
+    background: #03C084;
+    color: #020617;
     border-bottom-right-radius: 4px;
 }
 
@@ -241,23 +318,26 @@ st.markdown("""
 .message-other {
     margin-right: auto;
     text-align: left;
-    background: rgba(32, 44, 51, 0.95);
+    background: rgba(17, 24, 39, 0.95);
     color: #e5e7eb;
     border-bottom-left-radius: 4px;
+            
 }
 
 /* Sender label */
 .message-sender {
-    font-size: 0.72rem;
+    font-size: 0.92rem;
     font-weight: 600;
-    opacity: 0.8;
+    opacity: 0.85;
     margin-bottom: 2px;
+    color: inherit;
 }
 
 /* Message text */
 .message-text {
     font-size: 0.9rem;
     line-height: 1.45;
+    color: inherit;
 }
 
 /* System messages (centered, subtle) */
@@ -270,8 +350,6 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
-
-
 
 # Message container with scrollable area
 chat_container = st.container(height=450)
@@ -306,5 +384,4 @@ st.text_input(
 if st.session_state.get("chat_status"):
     st.caption(st.session_state["chat_status"])
 
-st.markdown("---")
-st.caption("💡 Messages are synchronized in real-time across all users in this room")
+

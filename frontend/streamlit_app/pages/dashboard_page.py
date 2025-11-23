@@ -30,7 +30,7 @@ page_icon = Image.open(icon_path) if os.path.exists(icon_path) else "📊"
 
 st.set_page_config(page_title="Dashboard - SyncroX", page_icon=page_icon, layout="wide")
 
-# Apply custom CSS for Raleway font and black background
+# Apply custom CSS for Raleway font, black background & SyncroX theme
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
@@ -49,11 +49,99 @@ st.markdown("""
     
     [data-testid="stSidebar"] {
         background-color: #0a0a0a;
+        border-right: 1px solid rgba(3, 192, 132, 0.25);
     }
     
-    h1, h2, h3, h4, h5, h6, p, div, span, label, button {
+    h1, h2, h3, h4, h5, h6 {
         font-family: 'Raleway', sans-serif !important;
+        color: #f9fafb !important;
     }
+
+    p, div, span, label {
+        font-family: 'Raleway', sans-serif !important;
+        color: #e5e7eb;
+    }
+
+    /* Sidebar headings */
+    [data-testid="stSidebar"] h3 {
+        color: #03C084 !important;
+        font-weight: 700 !important;
+    }
+
+    /* Sidebar info box */
+    .stAlert {
+        background-color: #0d0d0d !important;
+        border-left: 4px solid #03C084 !important;
+        color: #e5e7eb !important;
+    }
+
+    /* Sidebar navigation buttons */
+    [data-testid="stSidebar"] button {
+        background-color: #03C084 !important;
+        color: #020617 !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 700 !important;
+        margin-bottom: 8px !important;
+        padding: 0.45rem 0.8rem !important;
+    }
+    [data-testid="stSidebar"] button:hover {
+        background-color: #02a673 !important;
+        color: #f9fafb !important;
+    }
+
+    /* Disabled nav (current page) */
+    [data-testid="stSidebar"] button[disabled] {
+        background-color: #064e3b !important;
+        color: #9ca3af !important;
+        opacity: 0.9 !important;
+    }
+
+    /* Logout secondary button */
+    button[kind="secondary"] {
+        background-color: #111827 !important;
+        color: #e5e7eb !important;
+        border: 1px solid #374151 !important;
+    }
+    button[kind="secondary"]:hover {
+        border-color: #03C084 !important;
+        background-color: #1f2933 !important;
+    }
+
+    /* Global primary buttons (if any) */
+    div.stButton > button {
+        background-color: #03C084 !important;
+        color: #020617 !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 800 !important;
+    }
+    div.stButton > button:hover {
+        background-color: #02a673 !important;
+        color: #f9fafb !important;
+    }
+
+    /* Expander styling (for error details, metrics, concepts) */
+    details {
+        border-radius: 10px;
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        background-color: #020617;
+        margin-bottom: 8px;
+    }
+    summary {
+        color: #e5e7eb !important;
+        font-weight: 500;
+    }
+    details[open] {
+        border-color: #03C084;
+        box-shadow: 0 0 14px rgba(3, 192, 132, 0.35);
+    }
+
+    /* Captions / subtle text */
+    .stCaption, .stMarkdown small {
+        color: #9ca3af !important;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -272,28 +360,112 @@ st.markdown("---")
 # ---- Networking Concepts Section ----
 st.subheader("🎓 Networking Concepts Demonstrated")
 
-with st.expander("📡 Custom TCP Protocols"):
+with st.expander("📡 Custom TCP Protocols", expanded=True):
     st.markdown("""
-    - **Chat:** `HELLO / JOIN / MSG / LIST` for room-based messaging
-    - **File Transfer:** Size-prefixed framing with per-chunk ACKs
-    - **Collab:** `SET / DOC / USERS` for real-time document sync
-    - **Exec:** `EXECUTE / RESULT` for remote code execution
+    #### Chat Protocol (Port 9009)
+    - **HELLO <username>**: Initial handshake to establish client identity
+    - **CREATE_ROOM**: Server generates unique 4-digit room code and assigns client
+    - **JOIN_ROOM <code>**: Join existing room (auto-creates if doesn't exist)
+    - **MSG <text>**: Broadcast message to all room members with automatic echo
+    - **LIST_ROOMS**: Query all active room codes on server
+    - **BYE**: Graceful disconnect with cleanup of client resources
+    - **Room Broadcasting**: Messages are multicast to all sockets in the room set
+    - **Username Tracking**: Server maintains client→username mapping for attribution
+    
+    #### File Transfer Protocol (Port 9010)
+    - **UPLOAD <filename> <filesize> <room> <algo>**: Initiate file upload with metadata
+    - **Size-prefixed chunks**: Each chunk sent as `<4-byte-size><data>` for framing
+    - **Per-chunk ACK**: Server responds with `ACK <seq> <timestamp>` for RTT measurement
+    - **Checksum validation**: Optional integrity checking on received chunks
+    - **DOWNLOAD <filename> <room>**: Request file retrieval from room storage
+    - **LIST <room>**: Enumerate all uploaded files in specific room
+    - **Binary safe**: Uses raw socket buffers, no text encoding on file data
+    
+    #### Collaborative Editor Protocol (Port 9011)
+    - **JOIN <room> <username>**: Subscribe to document updates for room
+    - **SET <content>**: Push local document changes to server
+    - **DOC <content>**: Server broadcasts synchronized document state
+    - **USERS <count>**: Server notifies clients of active collaborators
+    - **Last-write-wins**: Simple conflict resolution, no operational transforms
+    - **Auto-sync**: Clients poll for DOC updates every 500ms for real-time feel
+    
+    #### Code Execution Protocol (Port 9012)
+    - **EXECUTE <lang> <code> [stdin]**: Submit code with language and optional input
+    - **Docker isolation**: Each execution runs in ephemeral container with resource limits
+    - **RESULT <stdout> <stderr> <rc> <time_ms>**: Return execution output and metrics
+    - **Multi-language support**: Python, C, C++, Java with appropriate runtimes
+    - **Security constraints**: 256MB memory, 0.5 CPU cores, 30s timeout per execution
+    - **Compilation handling**: Transparent gcc/g++/javac compilation before execution
     """)
 
-with st.expander("🔄 Flow & Congestion Control"):
+with st.expander("🔄 Flow & Congestion Control", expanded=True):
     st.markdown("""
-    - **Chunked transfers:** 4KB segments with explicit sizes
-    - **EWMA RTT:** Smoothed round-trip time calculation
-    - **Tahoe/Reno simulation:** Slow start, congestion avoidance, loss recovery
-    - **Per-chunk ACKs:** Measure latency and adjust window size
+    #### TCP Congestion Control Simulation
+    - **Slow Start Phase**: CWND grows exponentially (doubles per RTT) until ssthresh
+    - **Congestion Avoidance**: Linear growth (+1 MSS per RTT) above ssthresh
+    - **Tahoe Algorithm**: On loss, ssthresh = cwnd/2, cwnd resets to 1 MSS
+    - **Reno Algorithm**: On loss, ssthresh = cwnd/2, cwnd = ssthresh (faster recovery)
+    - **Fast Retransmit**: Detect loss from duplicate ACKs without timeout
+    - **Initial ssthresh**: Set to 8 segments at connection start
+    
+    #### RTT Estimation
+    - **Sample RTT**: Measure time between chunk send and ACK receipt
+    - **EWMA Smoothing**: `SRTT = (1-α)×SRTT + α×RTT` where α=0.125
+    - **Adaptive timeout**: RTO calculated from SRTT + 4×RTTVAR
+    - **Timestamp-based**: Server echoes send timestamp in ACK for accurate measurement
+    
+    #### Chunking Strategy
+    - **Fixed chunk size**: 4096 bytes (4KB) per segment for predictable behavior
+    - **Sequential numbering**: Each chunk gets sequence number for ordering
+    - **Size prefixing**: 4-byte big-endian integer before each chunk
+    - **Pipeline depth**: Window size determines in-flight chunks
+    - **Flow control**: Receiver can slow sender via window advertisements
+    
+    #### Metrics Logging
+    - **Per-transfer CSV**: Records seq, event, cwnd, ssthresh, rtt_ms, srtt_ms
+    - **Room isolation**: Metrics tagged with room code for multi-tenant analytics
+    - **Real-time plotting**: Dashboard visualizes CWND evolution and threshold crossings
     """)
 
-with st.expander("🔒 Reliability & Security"):
+with st.expander("🔒 Reliability & Security", expanded=True):
     st.markdown("""
-    - **Request-response pattern:** Every command gets OK/ERROR response
-    - **Room isolation:** 4-digit codes scope all data transfers
-    - **Docker sandbox:** Untrusted code runs in isolated containers
-    - **Rate limiting:** Prevents message flooding in chat
+    #### Protocol Reliability
+    - **Request-Response Pattern**: Every client command receives OK/ERROR acknowledgment
+    - **Command echoing**: Server echoes validated commands back to client
+    - **Error propagation**: Detailed error messages (e.g., "Room does not exist")
+    - **Graceful degradation**: Clients handle server disconnects and reconnect
+    - **Timeout handling**: Both client and server implement read/write timeouts
+    - **Connection cleanup**: finally blocks ensure socket closure and resource release
+    
+    #### Room-Based Isolation
+    - **Namespace separation**: 4-digit room codes partition all resources
+    - **No cross-room leakage**: Files, messages, and documents scoped to room
+    - **Concurrent rooms**: Server maintains separate state per room via dictionaries
+    - **Room cleanup**: Empty rooms auto-deleted when last member disconnects
+    - **Code reusability**: Room pattern consistent across all services
+    
+    #### Docker Sandbox Security
+    - **Process isolation**: Each execution in separate container, no shared state
+    - **Resource limits**: CPU, memory, and time constraints prevent DoS
+    - **No network access**: Containers run with `--network none` flag
+    - **Read-only filesystem**: Code directory mounted as read-only
+    - **Temporary artifacts**: Build outputs in ephemeral /tmp directory
+    - **UID mapping**: Non-root user inside container for privilege separation
+    - **Image scanning**: Base images from trusted registries (python:3.11-slim, gcc, openjdk)
+    
+    #### Rate Limiting & DoS Prevention
+    - **Chat rate limit**: Max 5 messages per 2-second window per client
+    - **Sliding window**: Uses deque to track message timestamps
+    - **RATE_LIMIT error**: Client receives explicit backpressure signal
+    - **Connection limits**: Server can cap total connections via listen backlog
+    - **Timeout enforcement**: Idle connections closed after inactivity period
+    
+    #### Data Integrity
+    - **Binary preservation**: Files transferred bit-for-bit with no encoding corruption
+    - **Size validation**: Received file size checked against declared size
+    - **Atomic writes**: Files written to temp location, then renamed atomically
+    - **Path sanitization**: Uploaded filenames sanitized to prevent directory traversal
+    - **Storage isolation**: Each room's files stored in separate directory
     """)
 
 st.markdown("---")

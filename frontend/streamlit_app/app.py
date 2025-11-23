@@ -69,6 +69,26 @@ if "is_logged_in" not in st.session_state:
     st.session_state.is_logged_in = False
 
 
+def render_footer():
+    """Shared footer for all views"""
+    st.markdown(
+        """
+        <hr style="border: 0; border-top: 1px solid #1f2933; margin-top: 3rem; margin-bottom: 0.75rem;" />
+        <div style="text-align: center; font-size: 1rem; color: #9ca3af;">
+            Built  by
+            <a href="https://github.com/Abs-Futy7" target="_blank" style="color:#03C084; text-decoration:none;">
+                MD. Abu Bakar Siddique (@Abs-Futy7)
+            </a>
+            &nbsp;and&nbsp;
+            <a href="https://github.com/Mehedi26696" target="_blank" style="color:#03C084; text-decoration:none;">
+                H. M. Mehedi Hasan (@Mehedi26696)
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def main():
     # ========================================================================
     # WELCOME PAGE - User not logged in
@@ -215,6 +235,8 @@ def render_welcome_page():
             </div>
             """, unsafe_allow_html=True)
 
+        # Footer on welcome page
+        render_footer()
 
 
 def render_main_app():
@@ -406,6 +428,9 @@ def render_main_app():
         "💡 **Tip:** Use the sidebar on the left to navigate between features. "
         "All features in this room are synchronized in real-time!"
     )
+
+    # Footer on main app page
+    render_footer()
 
 
 if __name__ == "__main__":
