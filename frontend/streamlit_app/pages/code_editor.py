@@ -15,45 +15,48 @@ from backend.collab.client import TcpCollabClient
 from backend.code_exec.client import TcpExecClient
 from PIL import Image
 
-# ============================================================================
+# ========================================================================
 # COLLABORATIVE CODE EDITOR PAGE
-# ============================================================================
+# ========================================================================
 
 # Load custom icon
 icon_path = os.path.join(PROJECT_ROOT, "assets", "image.png")
 page_icon = Image.open(icon_path) if os.path.exists(icon_path) else "🤝"
 
-st.set_page_config(page_title="Code Editor - SyncroX", page_icon=page_icon, layout="wide")
+st.set_page_config(
+    page_title="Collab - SyncroX",
+    page_icon=page_icon,
+    layout="wide",
+)
 
-# Apply custom CSS for Raleway font, black background & SyncroX theme
-st.markdown("""
+# ------------------ THEME / CSS ------------------
+st.markdown(
+    """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
-    
+
     * {
         font-family: 'Raleway', sans-serif !important;
     }
-    
+
     .stApp {
         background-color: #000000;
     }
-    
+
     .main {
         background-color: #000000;
     }
-    
+
     [data-testid="stSidebar"] {
         background-color: #0a0a0a;
         border-right: 1px solid rgba(3, 192, 132, 0.25);
     }
-    
+
     h1, h2, h3, h4, h5, h6 {
-        font-family: 'Raleway', sans-serif !important;
         color: #f9fafb !important;
     }
 
     p, div, span, label {
-        font-family: 'Raleway', sans-serif !important;
         color: #e5e7eb;
     }
 
@@ -84,45 +87,27 @@ st.markdown("""
         background-color: #02a673 !important;
         color: #f9fafb !important;
     }
-
-    /* Disabled nav (current page) */
     [data-testid="stSidebar"] button[disabled] {
         background-color: #064e3b !important;
         color: #9ca3af !important;
         opacity: 0.9 !important;
     }
 
-    /* Logout secondary button */
-    button[kind="secondary"] {
-        background-color: #111827 !important;
-        color: #e5e7eb !important;
-        border: 1px solid #374151 !important;
-    }
-    button[kind="secondary"]:hover {
-        border-color: #03C084 !important;
-        background-color: #1f2933 !important;
-    }
-
-    /* Global primary buttons (outside sidebar) */
+    /* Generic buttons in main area */
     div.stButton > button {
         background-color: #03C084 !important;
         color: #020617 !important;
         border-radius: 8px !important;
         border: none !important;
         font-weight: 800 !important;
+        padding: 0.4rem 0.8rem !important;
     }
     div.stButton > button:hover {
         background-color: #02a673 !important;
         color: #f9fafb !important;
     }
 
-    /* Selectbox styling (language) */
-    .stSelectbox label {
-        color: #e5e7eb !important;
-        font-weight: 500 !important;
-    }
-
-    /* Textareas (code editor, stdin, output) */
+    /* Textareas (editor, stdin, output) */
     .stTextArea textarea {
         background-color: #020617 !important;
         color: #e5e7eb !important;
@@ -137,13 +122,15 @@ st.markdown("""
         outline: none !important;
     }
 
-    /* Info/status captions */
     .stCaption, .stMarkdown small {
         color: #9ca3af !important;
     }
-
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
+
+# ------------------ AUTH / NAV ------------------
 
 # Check if user is logged in
 if not st.session_state.get("is_logged_in", False):
@@ -152,50 +139,55 @@ if not st.session_state.get("is_logged_in", False):
         st.switch_page("app.py")
     st.stop()
 
+room = st.session_state.current_room
+username = st.session_state.username
+
 # Sidebar - User info and navigation
 with st.sidebar:
     st.markdown("### 👤 User Information")
-    st.info(f"**Name:** {st.session_state.username}\n\n**Room:** `{st.session_state.current_room}`")
-    
+    st.info(f"**Name:** {username}\n\n**Room:** `{room}`")
+
     st.markdown("---")
-    
     st.markdown("### 🧭 Navigation")
     st.caption("Select a feature below:")
-    
-    # Navigation buttons
+
     if st.button("💬 Chat", use_container_width=True):
         st.switch_page("pages/chat.py")
-    
+
     if st.button("🤝 Code Editor", use_container_width=True, disabled=True):
         st.switch_page("pages/code_editor.py")
-    
+
     if st.button("📁 File Manager", use_container_width=True):
         st.switch_page("pages/file_manager.py")
-    
+
     if st.button("📊 Dashboard", use_container_width=True):
         st.switch_page("pages/dashboard_page.py")
-    
+
+    if st.button("📜 Execution Output", use_container_width=True):
+        st.switch_page("pages/exec_output.py")
+
     st.markdown("---")
-    
-    # Logout button
     if st.button("🚪 Leave Room & Logout", use_container_width=True, type="secondary"):
         st.session_state.is_logged_in = False
         st.session_state.username = ""
         st.session_state.current_room = ""
-        # Clear all client connections
+        # Clear all TCP clients from state
         for key in list(st.session_state.keys()):
-            if key.endswith('_client'):
+            if key.endswith("_client"):
                 st.session_state.pop(key)
         st.switch_page("app.py")
 
-# Auto-refresh every 0.5 seconds for remote updates
-st_autorefresh(interval=500, key="collab_refresh")
+# ------------------ SESSION STATE ------------------
 
-# Initialize session state
+# Auto-refresh so edits from others appear
+st_autorefresh(interval=1500, key="collab_refresh")
+
 if "collab_client" not in st.session_state:
     st.session_state.collab_client = None
+if "collab_username" not in st.session_state:
+    st.session_state.collab_username = username
 if "collab_editor" not in st.session_state:
-    st.session_state.collab_editor = ""
+    st.session_state.collab_editor = "# Welcome to collaborative coding!\n# Start writing your code here..."
 if "collab_status" not in st.session_state:
     st.session_state.collab_status = ""
 if "collab_language" not in st.session_state:
@@ -214,155 +206,207 @@ if "collab_stdin" not in st.session_state:
     st.session_state.collab_stdin = ""
 if "exec_client" not in st.session_state:
     st.session_state.exec_client = None
+if "last_exec_lang" not in st.session_state:
+    st.session_state.last_exec_lang = None
+if "last_exec_time" not in st.session_state:
+    st.session_state.last_exec_time = None
+if "exec_history" not in st.session_state:
+    # list of dicts, each is one execution record
+    st.session_state.exec_history = []
 
-st.header("Collaborative Code Editor")
-st.caption(f"Room: `{st.session_state.current_room}` • User: `{st.session_state.username}`")
+# ------------------ CONNECT CLIENTS ------------------
 
-client = st.session_state.collab_client
-
-# ---------- Connect to collab and exec servers ----------
-if client is None:
-    st.info("Connecting to collaboration server...")
-    
+# Collab client
+if st.session_state.collab_client is None:
     try:
-        client = TcpCollabClient(
-            host="127.0.0.1", port=9011, username=st.session_state.username
-        )
-        client.join_room(st.session_state.current_room)
-        
-        st.session_state.collab_client = client
-        st.session_state.collab_status = f"Connected to room {st.session_state.current_room}"
-        st.session_state.collab_last_sent = ""
-        st.session_state.collab_last_sent_time = 0.0
-        
-        # Connect exec client
-        st.session_state.exec_client = TcpExecClient(host="127.0.0.1", port=9012)
-        st.rerun()
+        collab_client = TcpCollabClient(host="127.0.0.1", port=9011, username=username)
+        collab_client.join_room(room)
+        st.session_state.collab_client = collab_client
+        st.session_state.collab_status = f"Connected to room {room} as {username}."
     except Exception as e:
-        st.error(f"Could not connect to collab/exec server: {e}")
+        st.error(f"Could not connect to collab server: {e}")
         st.stop()
 
-# ---------- ALREADY CONNECTED ----------
-client = st.session_state.collab_client
+# Exec client
+if st.session_state.exec_client is None:
+    try:
+        st.session_state.exec_client = TcpExecClient(host="127.0.0.1", port=9012)
+    except Exception as e:
+        st.error(f"Could not connect to exec server: {e}")
+        st.stop()
 
-# Pull document updates from server
+client: TcpCollabClient = st.session_state.collab_client
+exec_client: TcpExecClient = st.session_state.exec_client
+
+# ------------------ PULL UPDATES FROM SERVER ------------------
+
+# Document updates
 new_doc = client.get_latest_doc()
 if new_doc is not None and new_doc != st.session_state.collab_editor:
     st.session_state.collab_editor = new_doc
     st.session_state.collab_last_sent = new_doc
 
-# Request / read active users list
-now = time.time()
-if now - st.session_state.collab_users_last_request > 2.0:
-    client.request_users(st.session_state.current_room)
-    st.session_state.collab_users_last_request = now
+# Active users (if supported by your client)
+if hasattr(client, "request_users") and hasattr(client, "get_latest_users"):
+    now = time.time()
+    if now - st.session_state.collab_users_last_request > 2.0:
+        client.request_users(room)
+        st.session_state.collab_users_last_request = now
 
-users_update = client.get_latest_users()
-if users_update is not None:
-    st.session_state.collab_users = users_update
+    users_update = client.get_latest_users()
+    if users_update is not None:
+        st.session_state.collab_users = users_update
 
-# Show last editor + active users
-if getattr(client, "last_editor", None):
-    st.caption(f"Last update from **{client.last_editor}**")
+# ------------------ PAGE HEADER ------------------
 
-if st.session_state.collab_users:
-    labels = [f"{name} ({status})" for name, status in st.session_state.collab_users]
-    st.caption("Active users: " + ", ".join(labels))
+st.header("🤝 Collab – TCP Shared Code Editor")
 
-st.markdown("### Shared Code")
+top_left, top_right = st.columns([3, 1])
+with top_left:
+    st.markdown(f"**User:** `{username}` • **Room:** `{room}`")
+    if hasattr(client, "last_editor") and getattr(client, "last_editor"):
+        st.caption(f"Last update from **{client.last_editor}**")
 
-# Language selector
-st.session_state.collab_language = st.selectbox(
+    if st.session_state.collab_users:
+        labels = [f"{name} ({status})" for name, status in st.session_state.collab_users]
+        st.caption("Active users: " + ", ".join(labels))
+
+with top_right:
+    if st.button("Disconnect", use_container_width=True):
+        try:
+            client.close()
+        except Exception:
+            pass
+        st.session_state.collab_client = None
+        st.session_state.exec_client = None
+        st.session_state.collab_status = "Disconnected from collab server."
+        st.stop()
+
+if st.session_state.collab_status:
+    st.info(st.session_state.collab_status)
+
+st.markdown("### Shared code")
+
+# ------------------ LANGUAGE SELECTOR ------------------
+
+selected_lang = st.selectbox(
     "Language",
     ["python", "c", "cpp", "java"],
+    index=["python", "c", "cpp", "java"].index(st.session_state.collab_language)
+    if st.session_state.collab_language in ["python", "c", "cpp", "java"]
+    else 0,
     key="collab_language_select",
 )
+st.session_state.collab_language = selected_lang
 
-# Editor
-code = st.text_area(
+# ------------------ EDITOR & STDIN ------------------
+
+code_text = st.text_area(
     "Code",
     height=350,
     key="collab_editor",
-    help="Code is automatically synced across all users in this room"
 )
 
-# Optional stdin
 stdin_text = st.text_area(
     "Program input (stdin)",
-    height=80,
+    height=100,
     key="collab_stdin",
-    help="This text will be sent to the program's standard input",
 )
 
-# ---------- AUTO-SYNC: push local edits every ~1s ----------
-now = time.time()
-if (
-    code != st.session_state.collab_last_sent
-    and now - st.session_state.collab_last_sent_time > 1.0
-):
-    try:
-        client.set_code(st.session_state.current_room, code)
-        st.session_state.collab_last_sent = code
-        st.session_state.collab_last_sent_time = now
-        st.session_state.collab_status = "✅ Synced changes to room"
-    except Exception as e:
-        st.session_state.collab_status = f"❌ Error syncing: {e}"
+# ------------------ SAVE / RUN / HISTORY BUTTONS ------------------
 
-# ---------- Manual Save + Run ----------
-col_save1, col_save2 = st.columns([1, 1])
+col_save1, col_save2, col_save3 = st.columns([1, 1, 1])
+
 with col_save1:
     if st.button("💾 Save to Room", use_container_width=True):
         try:
-            client.set_code(st.session_state.current_room, code)
-            st.session_state.collab_last_sent = code
+            client.set_code(room, st.session_state.collab_editor)
+            st.session_state.collab_last_sent = st.session_state.collab_editor
             st.session_state.collab_last_sent_time = time.time()
-            st.success("✅ Code saved and broadcast to all users")
+            st.session_state.collab_status = "Saved code to room (broadcast to others)."
         except Exception as e:
-            st.error(f"❌ Error saving: {e}")
+            st.session_state.collab_status = f"Error saving: {e}"
 
 with col_save2:
-    run_clicked = st.button("▶ Run Code", use_container_width=True, type="primary")
+    run_clicked = st.button("▶ Run Code", use_container_width=True)
+
+with col_save3:
+    if st.button("📜 View Exec History", use_container_width=True):
+        st.switch_page("pages/exec_output.py")
+
+# ------------------ HANDLE EXECUTION ------------------
 
 if run_clicked:
     lang = st.session_state.collab_language
     code_to_run = st.session_state.collab_editor
-    
-    exec_client = st.session_state.exec_client
+
     if exec_client is None:
         st.error("❌ Exec server not connected")
     else:
         with st.spinner(f"🔄 Running {lang} code..."):
             try:
                 success, out_text, err_text, rc, time_ms = exec_client.execute(
-                    room=st.session_state.current_room,
+                    room=room,
                     language=lang,
                     code=code_to_run,
                     stdin_text=stdin_text,
                 )
 
-                output = f"[language={lang}, return_code={rc}, time={time_ms} ms, success={success}]\n\n"
-                if out_text:
-                    output += out_text
-                if err_text:
-                    if output and not output.endswith("\\n"):
-                        output += "\\n"
-                    output += err_text
+                st.session_state.last_exec_lang = lang
+                st.session_state.last_exec_time = time.strftime("%H:%M:%S")
 
-                st.session_state.collab_output = output
-                
-                # Display immediately
-                st.success(f"✅ Execution completed in {time_ms}ms")
+                meta = f"[language={lang}, return_code={rc}, time={time_ms} ms, success={success}]"
+                parts = [meta]
                 if out_text:
-                    st.code(out_text, language=None)
+                    parts.append(out_text.rstrip("\n"))
                 if err_text:
-                    st.error(err_text)
-                    
+                    parts.append("[stderr]")
+                    parts.append(err_text.rstrip("\n"))
+
+                st.session_state.collab_output = "\n".join(parts) or "[no output]"
+
+                # ---- store execution in per-session history ----
+                record = {
+                    "timestamp": time.time(),
+                    "room": st.session_state.get("current_room", room),
+                    "user": st.session_state.get("username", st.session_state.get("collab_username", "")),
+                    "language": lang,
+                    "code": code_to_run,
+                    "stdin": stdin_text,
+                    "stdout": out_text,
+                    "stderr": err_text,
+                    "return_code": rc,
+                    "success": bool(success),
+                    "time_ms": time_ms,
+                }
+                st.session_state.exec_history.append(record)
+
+                # keep only last 50 runs
+                if len(st.session_state.exec_history) > 50:
+                    st.session_state.exec_history = st.session_state.exec_history[-50:]
+
+                st.success(f"✅ Execution completed in {time_ms} ms")
+
             except Exception as e:
-                st.session_state.collab_output = f"[exception] {repr(e)}"
-                st.error(f"❌ Exception: {repr(e)}")
+                msg = f"[error executing {lang}] {e}"
+                st.session_state.collab_output = msg
 
-if st.session_state.collab_status:
-    st.info(st.session_state.collab_status)
+                st.session_state.exec_history.append({
+                    "timestamp": time.time(),
+                    "room": st.session_state.get("current_room", room),
+                    "user": st.session_state.get("username", st.session_state.get("collab_username", "")),
+                    "language": lang,
+                    "code": code_to_run,
+                    "stdin": st.session_state.get("collab_stdin", ""),
+                    "stdout": "",
+                    "stderr": str(e),
+                    "return_code": -1,
+                    "success": False,
+                    "time_ms": 0,
+                })
+                st.error(f"❌ Exception: {e}")
+
+# ------------------ OUTPUT ------------------
 
 st.markdown("### Output")
 
@@ -375,5 +419,6 @@ st.text_area(
 
 st.markdown("---")
 st.caption(
-    "💡 Code is synced in real-time. Supports Python, C, C++, and Java execution in Docker sandbox."
+    "💡 Code is synced via a custom TCP protocol (HELLO / JOIN / SET / DOC / USERS). "
+    "Execution is performed by a separate TCP exec server using Docker for Python, C, C++ and Java."
 )

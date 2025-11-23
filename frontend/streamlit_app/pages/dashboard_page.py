@@ -233,9 +233,9 @@ for i, (name, desc, h, p) in enumerate(services):
 
 st.markdown("---")
 
-# ---- Metrics Section ----
+# ---- Metrics Section (room + per-file analysis) ----
 if HAS_PLOTTING:
-    st.subheader("📈 File Transfer Metrics")
+    st.subheader("📈 File Transfer Metrics (Room & File based)")
     
     metrics_dir = Path("data") / "metrics"
     if not metrics_dir.exists() or not list(metrics_dir.glob("*.csv")):
@@ -244,8 +244,9 @@ if HAS_PLOTTING:
         files = sorted(metrics_dir.glob("room_*_file_metrics.csv"))
         
         if files:
-            # Find metrics for current room
-            current_room_files = [f for f in files if f"room_{st.session_state.current_room}_" in f.name]
+            # Metrics for current room
+            current_room = st.session_state.current_room
+            current_room_files = [f for f in files if f"room_{current_room}_" in f.name]
             
             if current_room_files:
                 fp = current_room_files[0]
@@ -253,40 +254,69 @@ if HAS_PLOTTING:
                 try:
                     df = pd.read_csv(fp)
                     
-                    st.write(f"**Current Room Metrics:** `{fp.name}`")
+                    st.write(f"**Current Room Metrics File:** `{fp.name}`")
                     st.write(f"Total events: {len(df)}")
                     
-                    # Show recent events
+                    # ---------- NEW: per-file filter ----------
+                    if "file" in df.columns:
+                        file_names = sorted(df["file"].dropna().unique())
+                        file_choice = st.selectbox(
+                            "Filter by file",
+                            ["All files"] + file_names,
+                        )
+                        if file_choice != "All files":
+                            df = df[df["file"] == file_choice].copy()
+                            st.write(f"Filtered to file `{file_choice}`, {len(df)} events.")
+                        else:
+                            file_choice = "All files"
+                    else:
+                        file_choice = "All files"
+                    
+                    # Show recent events (filtered)
                     with st.expander("📋 Recent Events"):
                         st.dataframe(df.tail(20), use_container_width=True)
                     
                     # Plot RTT if available
                     ack_df = df[df["event"] == "ACK"].copy()
-                    if not ack_df.empty:
+                    if not ack_df.empty and "rtt_ms" in ack_df.columns:
                         ack_df["rel_seq"] = ack_df["seq"] - ack_df["seq"].min() + 1
                         
                         col_chart1, col_chart2 = st.columns(2)
                         
                         with col_chart1:
-                            st.markdown("**RTT Performance**")
+                            st.markdown("**RTT Performance (per chunk)**")
                             fig1, ax1 = plt.subplots(figsize=(6, 4))
-                            ax1.plot(ack_df["rel_seq"], ack_df["rtt_ms"], marker="o", label="RTT sample", alpha=0.7)
-                            ax1.plot(ack_df["rel_seq"], ack_df["srtt_ms"], marker=".", label="EWMA RTT", linewidth=2)
+                            ax1.plot(
+                                ack_df["rel_seq"],
+                                ack_df["rtt_ms"],
+                                marker="o",
+                                label="RTT sample",
+                                alpha=0.7,
+                            )
+                            if "srtt_ms" in ack_df.columns:
+                                ax1.plot(
+                                    ack_df["rel_seq"],
+                                    ack_df["srtt_ms"],
+                                    marker=".",
+                                    label="EWMA RTT",
+                                    linewidth=2,
+                                )
                             ax1.set_xlabel("Chunk Sequence")
                             ax1.set_ylabel("RTT (ms)")
-                            ax1.set_title("Round-Trip Time")
+                            title_suffix = f" – {file_choice}" if file_choice != "All files" else ""
+                            ax1.set_title("Round-Trip Time" + title_suffix)
                             ax1.legend()
                             ax1.grid(True, alpha=0.3)
                             st.pyplot(fig1)
                         
                         with col_chart2:
-                            st.markdown("**Congestion Window**")
+                            st.markdown("**Congestion Window (CWND)**")
                             fig2, ax2 = plt.subplots(figsize=(6, 4))
                             ax2.plot(df["seq"], df["cwnd"], marker="o", color="green", alpha=0.7, label="CWND")
                             ax2.set_xlabel("Event Sequence")
                             ax2.set_ylabel("CWND (segments)")
                             algo = df["algo"].iloc[0] if "algo" in df.columns else "unknown"
-                            ax2.set_title(f"Congestion Control ({algo.upper()})")
+                            ax2.set_title(f"Congestion Control ({algo.upper()}){title_suffix}")
                             ax2.grid(True, alpha=0.3)
                             ax2.legend()
                             st.pyplot(fig2)
@@ -296,32 +326,56 @@ if HAS_PLOTTING:
                     st.markdown("**📈 Congestion Window Evolution**")
                     
                     if not df.empty and "cwnd" in df.columns and "ssthresh" in df.columns:
-                        # Create transmission round (use sequence number as proxy)
                         df_plot = df.copy()
                         df_plot["round"] = range(1, len(df_plot) + 1)
                         
                         fig3, ax3 = plt.subplots(figsize=(12, 6))
                         
                         # Plot CWND
-                        ax3.plot(df_plot["round"], df_plot["cwnd"], 
-                                marker="o", color="blue", linewidth=2, 
-                                label="Congestion Window (CWND)", markersize=4)
+                        ax3.plot(
+                            df_plot["round"],
+                            df_plot["cwnd"],
+                            marker="o",
+                            color="blue",
+                            linewidth=2,
+                            label="Congestion Window (CWND)",
+                            markersize=4,
+                        )
                         
                         # Plot ssthresh
-                        ax3.plot(df_plot["round"], df_plot["ssthresh"], 
-                                color="red", linestyle="--", linewidth=2, 
-                                label="Slow Start Threshold (ssthresh)", alpha=0.7)
+                        ax3.plot(
+                            df_plot["round"],
+                            df_plot["ssthresh"],
+                            color="red",
+                            linestyle="--",
+                            linewidth=2,
+                            label="Slow Start Threshold (ssthresh)",
+                            alpha=0.7,
+                        )
                         
                         # Shade regions
-                        ax3.fill_between(df_plot["round"], 0, df_plot["ssthresh"], 
-                                        alpha=0.1, color="green", label="Slow Start Region")
-                        ax3.fill_between(df_plot["round"], df_plot["ssthresh"], 
-                                        df_plot["cwnd"].max() * 1.1, 
-                                        alpha=0.1, color="orange", label="Congestion Avoidance Region")
+                        ax3.fill_between(
+                            df_plot["round"],
+                            0,
+                            df_plot["ssthresh"],
+                            alpha=0.1,
+                            color="green",
+                            label="Slow Start Region",
+                        )
+                        ax3.fill_between(
+                            df_plot["round"],
+                            df_plot["ssthresh"],
+                            df_plot["cwnd"].max() * 1.1,
+                            alpha=0.1,
+                            color="orange",
+                            label="Congestion Avoidance Region",
+                        )
                         
+                        algo = df_plot["algo"].iloc[0] if "algo" in df_plot.columns else "unknown"
+                        title_suffix = f" – {file_choice}" if file_choice != "All files" else ""
                         ax3.set_xlabel("Transmission Round", fontsize=12)
                         ax3.set_ylabel("Window Size (segments)", fontsize=12)
-                        ax3.set_title(f"TCP {algo.upper()} Congestion Control Dynamics", fontsize=14, fontweight="bold")
+                        ax3.set_title(f"TCP {algo.upper()} Congestion Control Dynamics{title_suffix}", fontsize=14, fontweight="bold")
                         ax3.legend(loc="best", fontsize=10)
                         ax3.grid(True, alpha=0.3, linestyle=":", linewidth=0.5)
                         ax3.set_xlim(0, len(df_plot) + 1)
@@ -329,7 +383,7 @@ if HAS_PLOTTING:
                         
                         st.pyplot(fig3)
                         
-                        # Statistics
+                        # Stats
                         col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
                         with col_stat1:
                             st.metric("Max CWND", f"{df_plot['cwnd'].max():.2f}")
@@ -346,7 +400,6 @@ if HAS_PLOTTING:
             else:
                 st.info(f"📊 No metrics for room `{st.session_state.current_room}` yet. Upload a file to generate data.")
                 
-                # Show other rooms
                 if files:
                     st.write("**Other rooms with metrics:**")
                     for f in files[:5]:
@@ -405,25 +458,19 @@ with st.expander("🔄 Flow & Congestion Control", expanded=True):
     - **Congestion Avoidance**: Linear growth (+1 MSS per RTT) above ssthresh
     - **Tahoe Algorithm**: On loss, ssthresh = cwnd/2, cwnd resets to 1 MSS
     - **Reno Algorithm**: On loss, ssthresh = cwnd/2, cwnd = ssthresh (faster recovery)
-    - **Fast Retransmit**: Detect loss from duplicate ACKs without timeout
-    - **Initial ssthresh**: Set to 8 segments at connection start
     
     #### RTT Estimation
     - **Sample RTT**: Measure time between chunk send and ACK receipt
     - **EWMA Smoothing**: `SRTT = (1-α)×SRTT + α×RTT` where α=0.125
     - **Adaptive timeout**: RTO calculated from SRTT + 4×RTTVAR
-    - **Timestamp-based**: Server echoes send timestamp in ACK for accurate measurement
     
     #### Chunking Strategy
     - **Fixed chunk size**: 4096 bytes (4KB) per segment for predictable behavior
     - **Sequential numbering**: Each chunk gets sequence number for ordering
-    - **Size prefixing**: 4-byte big-endian integer before each chunk
-    - **Pipeline depth**: Window size determines in-flight chunks
-    - **Flow control**: Receiver can slow sender via window advertisements
     
     #### Metrics Logging
     - **Per-transfer CSV**: Records seq, event, cwnd, ssthresh, rtt_ms, srtt_ms
-    - **Room isolation**: Metrics tagged with room code for multi-tenant analytics
+    - **Room isolation**: Metrics tagged with room code and filename
     - **Real-time plotting**: Dashboard visualizes CWND evolution and threshold crossings
     """)
 
@@ -431,41 +478,19 @@ with st.expander("🔒 Reliability & Security", expanded=True):
     st.markdown("""
     #### Protocol Reliability
     - **Request-Response Pattern**: Every client command receives OK/ERROR acknowledgment
-    - **Command echoing**: Server echoes validated commands back to client
-    - **Error propagation**: Detailed error messages (e.g., "Room does not exist")
-    - **Graceful degradation**: Clients handle server disconnects and reconnect
-    - **Timeout handling**: Both client and server implement read/write timeouts
-    - **Connection cleanup**: finally blocks ensure socket closure and resource release
+    - **Error propagation**: Detailed error messages
+    - **Timeout handling**: Client and server enforce timeouts
     
     #### Room-Based Isolation
     - **Namespace separation**: 4-digit room codes partition all resources
     - **No cross-room leakage**: Files, messages, and documents scoped to room
-    - **Concurrent rooms**: Server maintains separate state per room via dictionaries
-    - **Room cleanup**: Empty rooms auto-deleted when last member disconnects
-    - **Code reusability**: Room pattern consistent across all services
     
     #### Docker Sandbox Security
     - **Process isolation**: Each execution in separate container, no shared state
     - **Resource limits**: CPU, memory, and time constraints prevent DoS
-    - **No network access**: Containers run with `--network none` flag
-    - **Read-only filesystem**: Code directory mounted as read-only
-    - **Temporary artifacts**: Build outputs in ephemeral /tmp directory
-    - **UID mapping**: Non-root user inside container for privilege separation
-    - **Image scanning**: Base images from trusted registries (python:3.11-slim, gcc, openjdk)
     
     #### Rate Limiting & DoS Prevention
-    - **Chat rate limit**: Max 5 messages per 2-second window per client
-    - **Sliding window**: Uses deque to track message timestamps
-    - **RATE_LIMIT error**: Client receives explicit backpressure signal
-    - **Connection limits**: Server can cap total connections via listen backlog
-    - **Timeout enforcement**: Idle connections closed after inactivity period
-    
-    #### Data Integrity
-    - **Binary preservation**: Files transferred bit-for-bit with no encoding corruption
-    - **Size validation**: Received file size checked against declared size
-    - **Atomic writes**: Files written to temp location, then renamed atomically
-    - **Path sanitization**: Uploaded filenames sanitized to prevent directory traversal
-    - **Storage isolation**: Each room's files stored in separate directory
+    - **Chat rate limit**: Max messages per time window per client
     """)
 
 st.markdown("---")
