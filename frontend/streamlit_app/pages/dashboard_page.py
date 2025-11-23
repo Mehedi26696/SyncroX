@@ -11,6 +11,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 import streamlit as st
+from PIL import Image
 
 try:
     import pandas as pd
@@ -23,7 +24,38 @@ except ImportError:
 # DASHBOARD PAGE
 # ============================================================================
 
-st.set_page_config(page_title="Dashboard - SyncroX", page_icon="📊", layout="wide")
+# Load custom icon
+icon_path = os.path.join(PROJECT_ROOT, "assets", "image.png")
+page_icon = Image.open(icon_path) if os.path.exists(icon_path) else "📊"
+
+st.set_page_config(page_title="Dashboard - SyncroX", page_icon=page_icon, layout="wide")
+
+# Apply custom CSS for Raleway font and black background
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
+    
+    * {
+        font-family: 'Raleway', sans-serif !important;
+    }
+    
+    .stApp {
+        background-color: #000000;
+    }
+    
+    .main {
+        background-color: #000000;
+    }
+    
+    [data-testid="stSidebar"] {
+        background-color: #0a0a0a;
+    }
+    
+    h1, h2, h3, h4, h5, h6, p, div, span, label, button {
+        font-family: 'Raleway', sans-serif !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Check if user is logged in
 if not st.session_state.get("is_logged_in", False):
