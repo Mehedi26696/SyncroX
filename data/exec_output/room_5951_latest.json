@@ -1,0 +1,10 @@
+{
+  "timestamp": 1764832253.2105088,
+  "language": "c",
+  "success": true,
+  "return_code": 0,
+  "time_ms": 520,
+  "stdout": "",
+  "stderr": "",
+  "formatted_output": "[language=c, return_code=0, time=520 ms, success=True]"
+}

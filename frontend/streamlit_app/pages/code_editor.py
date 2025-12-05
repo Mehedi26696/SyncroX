@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import json
 from pathlib import Path
 
 # --- Make project root importable ---
@@ -179,8 +180,13 @@ with st.sidebar:
 
 # ------------------ SESSION STATE ------------------
 
-# Auto-refresh so edits from others appear
-st_autorefresh(interval=1500, key="collab_refresh")
+# Auto-refresh every 1 second for live editing (but not during/after execution)
+time_since_exec = time.time() - st.session_state.get("last_execution_time", 0)
+is_executing = st.session_state.get("is_executing", False)
+
+# Only auto-refresh if not executing and at least 3 seconds since last execution
+if not is_executing and time_since_exec > 3.0:
+    st_autorefresh(interval=1000, key="collab_refresh")
 
 if "collab_client" not in st.session_state:
     st.session_state.collab_client = None
@@ -213,6 +219,12 @@ if "last_exec_time" not in st.session_state:
 if "exec_history" not in st.session_state:
     # list of dicts, each is one execution record
     st.session_state.exec_history = []
+if "last_execution_time" not in st.session_state:
+    st.session_state.last_execution_time = 0
+if "is_executing" not in st.session_state:
+    st.session_state.is_executing = False
+if "last_run_click_time" not in st.session_state:
+    st.session_state.last_run_click_time = 0
 
 # ------------------ CONNECT CLIENTS ------------------
 
@@ -238,13 +250,44 @@ if st.session_state.exec_client is None:
 client: TcpCollabClient = st.session_state.collab_client
 exec_client: TcpExecClient = st.session_state.exec_client
 
-# ------------------ PULL UPDATES FROM SERVER ------------------
+# ------------------ LIVE SYNC: AUTO-SAVE & PULL UPDATES ------------------
 
-# Document updates
+# Auto-save: if user changed code and 2 seconds passed, broadcast it
+now = time.time()
+if (st.session_state.collab_editor != st.session_state.collab_last_sent and 
+    now - st.session_state.collab_last_sent_time > 2.0):
+    try:
+        # Save language metadata in first line as comment
+        lang_meta = f"//LANG:{st.session_state.collab_language}\n"
+        code_with_meta = lang_meta + st.session_state.collab_editor
+        
+        client.set_code(room, code_with_meta)
+        st.session_state.collab_last_sent = st.session_state.collab_editor
+        st.session_state.collab_last_sent_time = now
+        st.session_state.collab_status = "✓ Auto-saved (live sync active)"
+    except Exception as e:
+        st.session_state.collab_status = f"Auto-save error: {e}"
+
+# Pull updates from server (other users' changes)
 new_doc = client.get_latest_doc()
-if new_doc is not None and new_doc != st.session_state.collab_editor:
-    st.session_state.collab_editor = new_doc
-    st.session_state.collab_last_sent = new_doc
+if new_doc is not None:
+    # Extract language metadata if present
+    if new_doc.startswith("//LANG:"):
+        lines = new_doc.split("\n", 1)
+        lang_line = lines[0]
+        actual_code = lines[1] if len(lines) > 1 else ""
+        
+        # Extract language from metadata
+        lang = lang_line.replace("//LANG:", "").strip()
+        if lang in ["python", "c", "cpp", "java"]:
+            st.session_state.collab_language = lang
+        
+        new_doc = actual_code
+    
+    if new_doc != st.session_state.collab_editor:
+        st.session_state.collab_editor = new_doc
+        st.session_state.collab_last_sent = new_doc
+        st.session_state.collab_status = f"✓ Live update received from {client.last_editor or 'collaborator'}"
 
 # Active users (if supported by your client)
 if hasattr(client, "request_users") and hasattr(client, "get_latest_users"):
@@ -259,17 +302,22 @@ if hasattr(client, "request_users") and hasattr(client, "get_latest_users"):
 
 # ------------------ PAGE HEADER ------------------
 
-st.header("🤝 Collab – TCP Shared Code Editor")
+st.header("🤝 Collab – Live Code Editor")
 
 top_left, top_right = st.columns([3, 1])
 with top_left:
-    st.markdown(f"**User:** `{username}` • **Room:** `{room}`")
+    st.markdown(f"**User:** `{username}` • **Room:** `{room}` • 🟢 **LIVE EDITING**")
     if hasattr(client, "last_editor") and getattr(client, "last_editor"):
-        st.caption(f"Last update from **{client.last_editor}**")
+        st.caption(f"Last update from **{client.last_editor}** at {time.strftime('%H:%M:%S')}")
 
     if st.session_state.collab_users:
         labels = [f"{name} ({status})" for name, status in st.session_state.collab_users]
-        st.caption("Active users: " + ", ".join(labels))
+        st.caption("👥 Active users: " + ", ".join(labels))
+    
+    # Show typing indicator
+    time_since_last_edit = now - st.session_state.collab_last_sent_time
+    if time_since_last_edit < 2.0 and st.session_state.collab_editor != st.session_state.collab_last_sent:
+        st.caption("⌨️ You are typing... (will auto-save in 2s)")
 
 with top_right:
     if st.button("Disconnect", use_container_width=True):
@@ -313,112 +361,187 @@ stdin_text = st.text_area(
     key="collab_stdin",
 )
 
-# ------------------ SAVE / RUN / HISTORY BUTTONS ------------------
+# ------------------ RUN / HISTORY BUTTONS (auto-save is automatic) ------------------
 
-col_save1, col_save2, col_save3 = st.columns([1, 1, 1])
+col_btn1, col_btn2 = st.columns([1, 1])
 
-with col_save1:
-    if st.button("💾 Save to Room", use_container_width=True):
-        try:
-            client.set_code(room, st.session_state.collab_editor)
-            st.session_state.collab_last_sent = st.session_state.collab_editor
-            st.session_state.collab_last_sent_time = time.time()
-            st.session_state.collab_status = "Saved code to room (broadcast to others)."
-        except Exception as e:
-            st.session_state.collab_status = f"Error saving: {e}"
+with col_btn1:
+    run_clicked = st.button("▶ Run Code", use_container_width=True, key="run_code_btn")
 
-with col_save2:
-    run_clicked = st.button("▶ Run Code", use_container_width=True)
-
-with col_save3:
+with col_btn2:
     if st.button("📜 View Exec History", use_container_width=True):
         st.switch_page("pages/exec_output.py")
 
 # ------------------ HANDLE EXECUTION ------------------
 
 if run_clicked:
-    lang = st.session_state.collab_language
-    code_to_run = st.session_state.collab_editor
-
-    if exec_client is None:
-        st.error("❌ Exec server not connected")
+    # Debounce: prevent execution if clicked within last 2 seconds
+    time_since_last_click = time.time() - st.session_state.last_run_click_time
+    if time_since_last_click < 2.0:
+        st.warning("⏱️ Please wait, execution is in progress...")
     else:
-        with st.spinner(f"🔄 Running {lang} code..."):
-            try:
-                success, out_text, err_text, rc, time_ms = exec_client.execute(
-                    room=room,
-                    language=lang,
-                    code=code_to_run,
-                    stdin_text=stdin_text,
-                )
+        st.session_state.last_run_click_time = time.time()
+        st.session_state.is_executing = True
+        st.session_state.last_execution_time = time.time()
+        
+        lang = st.session_state.collab_language
+        code_to_run = st.session_state.collab_editor
 
-                st.session_state.last_exec_lang = lang
-                st.session_state.last_exec_time = time.strftime("%H:%M:%S")
+        if exec_client is None:
+            st.error("❌ Exec server not connected")
+            st.session_state.is_executing = False
+        else:
+            with st.spinner(f"🔄 Running {lang} code..."):
+                try:
+                    success, out_text, err_text, rc, time_ms = exec_client.execute(
+                        room=room,
+                        language=lang,
+                        code=code_to_run,
+                        stdin_text=stdin_text,
+                    )
+                    print(f"[STREAMLIT DEBUG] exec returned: success={success}, rc={rc}, time={time_ms}ms")
+                    
+                    st.session_state.last_exec_lang = lang
+                    st.session_state.last_exec_time = time.strftime("%H:%M:%S")
 
-                meta = f"[language={lang}, return_code={rc}, time={time_ms} ms, success={success}]"
-                parts = [meta]
-                if out_text:
-                    parts.append(out_text.rstrip("\n"))
-                if err_text:
-                    parts.append("[stderr]")
-                    parts.append(err_text.rstrip("\n"))
+                    meta = f"[language={lang}, return_code={rc}, time={time_ms} ms, success={success}]"
+                    parts = [meta]
+                    if out_text:
+                        parts.append(out_text.rstrip("\n"))
+                    if err_text:
+                        parts.append("[stderr]")
+                        parts.append(err_text.rstrip("\n"))
 
-                st.session_state.collab_output = "\n".join(parts) or "[no output]"
+                    st.session_state.collab_output = "\n".join(parts) or "[no output]"
 
-                # ---- store execution in per-session history ----
-                record = {
-                    "timestamp": time.time(),
-                    "room": st.session_state.get("current_room", room),
-                    "user": st.session_state.get("username", st.session_state.get("collab_username", "")),
-                    "language": lang,
-                    "code": code_to_run,
-                    "stdin": stdin_text,
-                    "stdout": out_text,
-                    "stderr": err_text,
-                    "return_code": rc,
-                    "success": bool(success),
-                    "time_ms": time_ms,
-                }
-                st.session_state.exec_history.append(record)
+                    # Save output to file for reliable display
+                    output_dir = os.path.join(PROJECT_ROOT, "data", "exec_output")
+                    os.makedirs(output_dir, exist_ok=True)
+                    output_file = os.path.join(output_dir, f"room_{room}_latest.json")
+                    output_data = {
+                        "timestamp": time.time(),
+                        "language": lang,
+                        "success": bool(success),
+                        "return_code": rc,
+                        "time_ms": time_ms,
+                        "stdout": out_text,
+                        "stderr": err_text,
+                        "formatted_output": st.session_state.collab_output
+                    }
+                    with open(output_file, "w", encoding="utf-8") as f:
+                        json.dump(output_data, f, indent=2)
+                    print(f"[STREAMLIT DEBUG] Output saved to {output_file}")
 
-                # keep only last 50 runs
-                if len(st.session_state.exec_history) > 50:
-                    st.session_state.exec_history = st.session_state.exec_history[-50:]
+                    # ---- store execution in per-session history ----
+                    record = {
+                        "timestamp": time.time(),
+                        "room": room,
+                        "user": username,
+                        "language": lang,
+                        "code": code_to_run,
+                        "stdin": stdin_text,
+                        "stdout": out_text,
+                        "stderr": err_text,
+                        "return_code": rc,
+                        "success": bool(success),
+                        "time_ms": time_ms,
+                    }
+                    if "exec_history" not in st.session_state:
+                        st.session_state.exec_history = []
+                    st.session_state.exec_history.append(record)
 
-                st.success(f"✅ Execution completed in {time_ms} ms")
+                    # keep only last 50 runs
+                    if len(st.session_state.exec_history) > 50:
+                        st.session_state.exec_history = st.session_state.exec_history[-50:]
 
-            except Exception as e:
-                msg = f"[error executing {lang}] {e}"
-                st.session_state.collab_output = msg
+                    print(f"[STREAMLIT DEBUG] Added to exec_history. Total records: {len(st.session_state.exec_history)}")
+                    
+                    # Clear execution flag
+                    st.session_state.is_executing = False
+                    
+                    # Show success/failure status based on actual result
+                    if success and rc == 0:
+                        st.success(f"✅ Execution completed successfully in {time_ms} ms")
+                    elif not success or rc != 0:
+                        st.error(f"❌ Execution failed (RC={rc}) in {time_ms} ms")
+                    else:
+                        st.warning(f"⚠️ Execution completed with return code {rc} in {time_ms} ms")
 
-                st.session_state.exec_history.append({
-                    "timestamp": time.time(),
-                    "room": st.session_state.get("current_room", room),
-                    "user": st.session_state.get("username", st.session_state.get("collab_username", "")),
-                    "language": lang,
-                    "code": code_to_run,
-                    "stdin": st.session_state.get("collab_stdin", ""),
-                    "stdout": "",
-                    "stderr": str(e),
-                    "return_code": -1,
-                    "success": False,
-                    "time_ms": 0,
-                })
-                st.error(f"❌ Exception: {e}")
+                except Exception as e:
+                    msg = f"[error executing {lang}] {e}"
+                    st.session_state.collab_output = msg
 
-# ------------------ OUTPUT ------------------
+                    # Save error to file
+                    output_dir = os.path.join(PROJECT_ROOT, "data", "exec_output")
+                    os.makedirs(output_dir, exist_ok=True)
+                    output_file = os.path.join(output_dir, f"room_{room}_latest.json")
+                    output_data = {
+                        "timestamp": time.time(),
+                        "language": lang,
+                        "success": False,
+                        "return_code": -1,
+                        "time_ms": 0,
+                        "stdout": "",
+                        "stderr": str(e),
+                        "formatted_output": msg
+                    }
+                    with open(output_file, "w", encoding="utf-8") as f:
+                        json.dump(output_data, f, indent=2)
+
+                    if "exec_history" not in st.session_state:
+                        st.session_state.exec_history = []
+                    st.session_state.exec_history.append({
+                        "timestamp": time.time(),
+                        "room": room,
+                        "user": username,
+                        "language": lang,
+                        "code": code_to_run,
+                        "stdin": stdin_text,
+                        "stdout": "",
+                        "stderr": str(e),
+                        "return_code": -1,
+                        "success": False,
+                        "time_ms": 0,
+                    })
+                    print(f"[STREAMLIT DEBUG] Exception logged to exec_history. Total: {len(st.session_state.exec_history)}")
+                    st.session_state.is_executing = False
+                    st.error(f"❌ Exception: {e}")
+
+# ------------------ OUTPUT (placed after execution to show fresh results) ------------------
 
 st.markdown("### Output")
 
+# Read output from file for reliable display
+output_dir = os.path.join(PROJECT_ROOT, "data", "exec_output")
+output_file = os.path.join(output_dir, f"room_{room}_latest.json")
+
+display_output = st.session_state.collab_output
+if os.path.exists(output_file):
+    try:
+        with open(output_file, "r", encoding="utf-8") as f:
+            output_data = json.load(f)
+            display_output = output_data.get("formatted_output", st.session_state.collab_output)
+            
+            # Show metadata
+            if output_data.get("timestamp", 0) > 0:
+                time_str = time.strftime("%H:%M:%S", time.localtime(output_data["timestamp"]))
+                st.caption(f"Last execution: {time_str} | Language: {output_data.get('language', 'unknown')} | Time: {output_data.get('time_ms', 0)}ms")
+    except Exception as e:
+        print(f"[STREAMLIT DEBUG] Error reading output file: {e}")
+        display_output = st.session_state.collab_output
+
+# Use unique key based on file modification time
+output_key = f"exec_output_{os.path.getmtime(output_file) if os.path.exists(output_file) else 0}"
 st.text_area(
     "Execution output",
-    value=st.session_state.collab_output,
+    value=display_output,
     height=180,
     disabled=True,
+    key=output_key,
 )
 
 st.markdown("---")
 st.caption(
-    "💡 Code is synced via a custom TCP protocol (HELLO / JOIN / SET / DOC / USERS). "
-    "Execution is performed by a separate TCP exec server using Docker for Python, C, C++ and Java."
+    "💡 **Live editing enabled**: Your changes auto-save every 2 seconds. Others' edits appear automatically every second. "
+    "Code execution uses a separate TCP exec server with Docker sandboxing (Python, C, C++, Java)."
 )
