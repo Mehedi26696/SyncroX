@@ -13,6 +13,8 @@ from streamlit_autorefresh import st_autorefresh
 from backend.tcp_chat.streamlit_client import TcpChatClient
 import time
 from PIL import Image
+import base64
+import io
 
 # ============================================================================
 # CHAT PAGE
@@ -200,6 +202,28 @@ def send_chat_message():
         st.session_state["chat_status"] = f"Error sending message: {e}"
 
 
+def add_emoji(emoji: str):
+    """Helper to append emoji to the text input."""
+    current = st.session_state.get("chat_message", "")
+    st.session_state.chat_message = current + emoji
+
+
+def handle_image_upload():
+    """Callback for image uploader."""
+    uploaded_file = st.session_state.get("chat_image_upload")
+    client = st.session_state.get("chat_client")
+    
+    if uploaded_file is not None and client:
+        try:
+            bytes_data = uploaded_file.getvalue()
+            b64_str = base64.b64encode(bytes_data).decode("utf-8")
+            client.send_image(b64_str)
+            st.session_state["chat_status"] = "Image sent!"
+            # Clear uploader (trick: usage of key with unique ID or just notify user)
+        except Exception as e:
+            st.session_state["chat_status"] = f"Error sending image: {e}"
+
+
 # Initialize session state
 if "chat_client" not in st.session_state:
     st.session_state.chat_client = None
@@ -268,6 +292,20 @@ for line in new_lines:
                     "text": text,
                     "is_me": is_me
                 })
+    elif line.startswith("IMG "):
+        # Format: "IMG <room> <username> <base64>"
+        parts = line.split(maxsplit=3)
+        if len(parts) >= 4:
+            sender = parts[2]
+            img_data = parts[3]
+            is_me = (sender == st.session_state.username)
+            st.session_state.chat_log.append({
+                "type": "image",
+                "sender": sender,
+                "data": img_data,
+                "is_me": is_me
+            })
+
     elif line.startswith("SYSTEM "):
         st.session_state.chat_log.append({"type": "system", "text": line[7:]})
     elif line.startswith("ROOM "):
@@ -348,8 +386,129 @@ st.markdown("""
     margin: 10px 0;
     font-style: italic;
 }
+
+/* Image styling with CSS-only Lightbox (Focus to zoom) */
+.zoomable-image {
+    border-radius: 12px;
+    max-width: 100%;
+    margin-top: 8px;
+    cursor: zoom-in;
+    transition: transform 0.2s ease;
+}
+
+.zoomable-image:focus {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 90vw;
+    max-height: 90vh;
+    width: auto;
+    height: auto;
+    z-index: 999999;
+    box-shadow: 0 0 0 100vmax rgba(0,0,0,0.85);
+    outline: none;
+    cursor: zoom-out;
+    border-radius: 4px;
+}
+
+/* Custom styling for Expanders to look like big buttons */
+div[data-testid="stExpander"] details summary {
+    background-color: #111827 !important;
+    border: 1px solid #374151 !important;
+    border-radius: 8px !important;
+    padding: 1rem !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    color: #e5e7eb !important;
+    transition: all 0.2s ease;
+}
+
+div[data-testid="stExpander"] details summary:hover {
+    border-color: #03C084 !important;
+    background-color: #1f2933 !important;
+    color: #03C084 !important;
+}
+
+div[data-testid="stExpander"] {
+    background-color: transparent !important;
+    border: none !important;
+}
+
+/* Chat Row Flex Layout for Avatars */
+.chat-row {
+    display: flex;
+    align-items: flex-end;
+    margin: 8px 0;
+    gap: 8px;
+}
+
+.row-me {
+    justify-content: flex-end;
+}
+
+.row-other {
+    justify-content: flex-start;
+}
+
+.chat-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #374151;
+    color: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.avatar-me {
+    background-color: #03C084;
+    color: #020617;
+    order: 2; /* Avatar after message for Me */
+}
+
+.avatar-other {
+    background-color: #1f2933;
+    border: 1px solid #374151;
+    /* order: 1; REMOVED to let it default to 0 (before message) */
+}
+
+/* Adjust bubble margins since we have flex gap */
+.chat-message {
+    margin: 0 !important;
+}
+
+/* Remove background for image avatars */
+img.chat-avatar {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
 </style>
 """, unsafe_allow_html=True)
+
+# Helper to load images as Base64
+def get_image_base64(path):
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return None
+
+# Load avatars
+icon_me_path = os.path.join(PROJECT_ROOT, "assets", "Icon.png")
+icon_other_path = os.path.join(PROJECT_ROOT, "assets", "Icon2.png")
+
+img_me_b64 = get_image_base64(icon_me_path)
+img_other_b64 = get_image_base64(icon_other_path)
+
+# Default fallback if images missing
+avatar_me_src = f"data:image/png;base64,{img_me_b64}" if img_me_b64 else ""
+avatar_other_src = f"data:image/png;base64,{img_other_b64}" if img_other_b64 else ""
 
 # Message container with scrollable area
 chat_container = st.container(height=450)
@@ -360,13 +519,50 @@ with chat_container:
                 st.markdown(f'<div class="system-message">{msg["text"]}</div>', unsafe_allow_html=True)
             elif msg["type"] == "message":
                 is_me = msg.get("is_me", False)
+                row_class = "row-me" if is_me else "row-other"
                 bubble_class = "message-me" if is_me else "message-other"
                 sender_name = "You" if is_me else msg["sender"]
                 
+                # Avatar Selection
+                if is_me:
+                    avatar_html = f'<img src="{avatar_me_src}" class="chat-avatar avatar-me">' if avatar_me_src else f'<div class="chat-avatar avatar-me">You</div>'
+                else:
+                    avatar_html = f'<img src="{avatar_other_src}" class="chat-avatar avatar-other">' if avatar_other_src else f'<div class="chat-avatar avatar-other">{sender_name[0].upper()}</div>'
+
                 st.markdown(f'''
-                <div class="chat-message {bubble_class}">
-                    <div class="message-sender">{sender_name}</div>
-                    <div class="message-text">{msg["text"]}</div>
+                <div class="chat-row {row_class}">
+                    {avatar_html}
+                    <div class="chat-message {bubble_class}">
+                        <div class="message-sender">{sender_name}</div>
+                        <div class="message-text">{msg["text"]}</div>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+
+            elif msg["type"] == "image":
+                is_me = msg.get("is_me", False)
+                row_class = "row-me" if is_me else "row-other"
+                bubble_class = "message-me" if is_me else "message-other"
+                sender_name = "You" if is_me else msg["sender"]
+                
+                # Avatar Selection
+                if is_me:
+                    avatar_html = f'<img src="{avatar_me_src}" class="chat-avatar avatar-me">' if avatar_me_src else f'<div class="chat-avatar avatar-me">You</div>'
+                else:
+                    avatar_html = f'<img src="{avatar_other_src}" class="chat-avatar avatar-other">' if avatar_other_src else f'<div class="chat-avatar avatar-other">{sender_name[0].upper()}</div>'
+
+                # Check if data handles the prefix or needs it
+                img_src = msg["data"]
+                if not img_src.startswith("data:image"):
+                    img_src = f"data:image/png;base64,{img_src}"
+                
+                st.markdown(f'''
+                <div class="chat-row {row_class}">
+                    {avatar_html}
+                    <div class="chat-message {bubble_class}">
+                        <div class="message-sender">{sender_name}</div>
+                        <img src="{img_src}" class="zoomable-image" tabindex="0">
+                    </div>
                 </div>
                 ''', unsafe_allow_html=True)
         else:
@@ -380,6 +576,26 @@ st.text_input(
     on_change=send_chat_message,
     placeholder="Type a message and press Enter..."
 )
+
+# Helper tools
+col_tools1, col_tools2 = st.columns([1, 1])
+with col_tools1:
+    with st.expander("😀 Add Emoji"):
+        emojis = ["😀", "😂", "🥰", "😎", "🤔", "👍", "👎", "🎉", "🔥", "❤️"]
+        cols = st.columns(5)
+        for i, emo in enumerate(emojis):
+            with cols[i % 5]:
+                # FIX: Use on_click to modify state before the next render to avoid StreamlitAPIException
+                st.button(emo, key=f"emo_{i}", on_click=add_emoji, args=(emo,))
+
+with col_tools2:
+    with st.expander("🖼️ Send Image"):
+        st.file_uploader(
+            "Upload Image", 
+            type=["png", "jpg", "jpeg"], 
+            key="chat_image_upload", 
+            on_change=handle_image_upload
+        )
 
 if st.session_state.get("chat_status"):
     st.caption(st.session_state["chat_status"])

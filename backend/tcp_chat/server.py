@@ -130,6 +130,19 @@ def handle_client(conn: socket.socket, addr):
                 broadcast(room_joined, f"MSG {room_joined} {username}: {msg}")
                 print(f"[ROOM {room_joined}] {username}: {msg}")
 
+            elif cmd == "IMG_SEND":
+                if room_joined is None:
+                    send_line(conn, "ERROR You are not in a room")
+                    continue
+                if not rest:
+                    send_line(conn, "ERROR No image data")
+                    continue
+                # Expecting: IMG_SEND <base64_string>
+                # We broadcast: IMG <room_code> <username> <base64_string>
+                img_data = rest[0]
+                broadcast(room_joined, f"IMG {room_joined} {username} {img_data}")
+                print(f"[ROOM {room_joined}] {username} sent an image ({len(img_data)} chars)")
+
             elif cmd == "LIST_ROOMS":
                 with lock:
                     codes = " ".join(sorted(rooms.keys()))

@@ -74,6 +74,9 @@ class TcpChatClient:
         # server remembers which room you're in
         self.sock.sendall(f"MSG {text}\n".encode("utf-8"))
 
+    def send_image(self, base64_data: str):
+        self.sock.sendall(f"IMG_SEND {base64_data}\n".encode("utf-8"))
+
     def get_new_messages(self) -> List[str]:
         """Drain all messages from queue and return them as a list."""
         lines: List[str] = []
