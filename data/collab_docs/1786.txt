@@ -1,0 +1,17 @@
+//LANG:cpp
+#include <iostream>
+
+// Use the standard namespace to avoid writing std:: before cin and cout
+using namespace std;
+
+int main() {
+    // 1. Declare a variable to store the input
+    int number;
+
+    // 2. Prompt the user for input (optional, but good practice)
+    cout << "Enter a number: ";
+    cin >> number;
+    cout << "You entered: " << number << endl;
+
+    return 0;
+}

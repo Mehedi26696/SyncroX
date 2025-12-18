@@ -10,9 +10,22 @@ class TcpCollabClient:
         self.port = port
         self.username = username
 
+        # Debug logging
+        import logging
+        self.logger = logging.getLogger("CollabClient")
+        self.logger.setLevel(logging.INFO)
+        # Avoid adding multiple handlers if re-initialized
+        if not self.logger.handlers:
+            fh = logging.FileHandler("client_debug.txt", mode='w')
+            fh.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
+            self.logger.addHandler(fh)
+        
+        self.logger.info(f"Connected to {host}:{port} as {username}")
+
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))
-        self.f = self.sock.makefile("rwb")
+        # Use makefile only for reading, to avoid buffering conflicts with sends
+        self.f = self.sock.makefile("rb")
 
         # send HELLO
         self._send_line(f"HELLO {self.username}")
@@ -35,8 +48,10 @@ class TcpCollabClient:
     # ------------- basic sending helpers -------------
 
     def _send_line(self, text: str):
-        self.f.write((text + "\n").encode("utf-8"))
-        self.f.flush()
+        try:
+            self.sock.sendall((text + "\n").encode("utf-8"))
+        except OSError:
+            self.alive = False
 
     def join_room(self, room: str):
         self._send_line(f"JOIN {room}")
@@ -51,8 +66,10 @@ class TcpCollabClient:
     def set_code(self, room: str, code: str):
         data = code.encode("utf-8")
         self._send_line(f"SET {room} {len(data)}")
-        self.f.write(data)
-        self.f.flush()
+        try:
+            self.sock.sendall(data)
+        except OSError:
+            self.alive = False
 
     # ------------- receiving loop -------------
 
@@ -64,17 +81,21 @@ class TcpCollabClient:
                     break
                 header = header.decode("utf-8").strip()
                 if not header:
+                    self.logger.info("Empty header line, continuing")
                     continue
+                
+                # self.logger.info(f"Received header: {header}") 
 
                 parts = header.split()
                 if parts[0] == "OK":
                     continue
                 if parts[0] == "ERROR":
-                    # could log errors if needed
+                    self.logger.error(f"Server error: {header}")
                     continue
 
                 # DOC <room> <size> <editor>
                 if parts[0] == "DOC":
+                    self.logger.info(f"Received DOC header: {header}")
                     if len(parts) < 3:
                         continue
                     room = parts[1]
@@ -96,7 +117,11 @@ class TcpCollabClient:
                     self.room = room
                     self.current_doc = text
                     self.last_editor = editor
+                    self.room = room
+                    self.current_doc = text
+                    self.last_editor = editor
                     self._doc_updates.put(text)
+                    self.logger.info(f"Put doc update in queue. Size: {len(text)}. Queue size: {self._doc_updates.qsize()}")
 
                 # USERS <room> name1:status1,name2:status2,...
                 elif parts[0] == "USERS":

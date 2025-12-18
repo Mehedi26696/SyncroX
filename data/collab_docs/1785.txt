@@ -1,0 +1,15 @@
+//LANG:c
+#include <stdio.h>
+
+int main() {
+    int number; // Declare an integer variable
+
+    printf("Enter an integer: "); // Prompt the user for input
+    
+    // Read the integer input from the user and store it in the 'number' variable
+    scanf("%d", &number); 
+    
+    printf("You entered: %d\n", number);
+
+    return 0;
+}

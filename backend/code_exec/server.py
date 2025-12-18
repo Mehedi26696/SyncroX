@@ -19,7 +19,7 @@ def run_in_docker(cmd_inside: list[str], workdir: Path, stdin_data: bytes = b"",
     """
     print(f"[DOCKER] Running command: {' '.join(cmd_inside)}")
     cmd = [
-        "docker", "run", "--rm",
+        "docker", "run", "--rm", "-i",
         "-m", "256m", "--cpus=0.5",
         "-v", f"{workdir}:/sandbox",
         SANDBOX_IMAGE,

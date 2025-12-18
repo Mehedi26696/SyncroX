@@ -229,10 +229,14 @@ if "last_run_click_time" not in st.session_state:
 # ------------------ CONNECT CLIENTS ------------------
 
 # Collab client
+if st.session_state.collab_client is not None and not st.session_state.collab_client.alive:
+    st.session_state.collab_client = None
+
 if st.session_state.collab_client is None:
     try:
         collab_client = TcpCollabClient(host="127.0.0.1", port=9011, username=username)
         collab_client.join_room(room)
+        collab_client.request_doc(room) # Explicitly request doc to ensure sync
         st.session_state.collab_client = collab_client
         st.session_state.collab_status = f"Connected to room {room} as {username}."
     except Exception as e:
@@ -261,10 +265,13 @@ if (st.session_state.collab_editor != st.session_state.collab_last_sent and
         lang_meta = f"//LANG:{st.session_state.collab_language}\n"
         code_with_meta = lang_meta + st.session_state.collab_editor
         
-        client.set_code(room, code_with_meta)
-        st.session_state.collab_last_sent = st.session_state.collab_editor
-        st.session_state.collab_last_sent_time = now
-        st.session_state.collab_status = "✓ Auto-saved (live sync active)"
+        if client.alive:
+            client.set_code(room, code_with_meta)
+            st.session_state.collab_last_sent = st.session_state.collab_editor
+            st.session_state.collab_last_sent_time = now
+            st.session_state.collab_status = "✓ Auto-saved (live sync active)"
+        else:
+             st.session_state.collab_status = "⚠️ Connection lost. Please refresh."
     except Exception as e:
         st.session_state.collab_status = f"Auto-save error: {e}"
 
@@ -285,6 +292,7 @@ if new_doc is not None:
         new_doc = actual_code
     
     if new_doc != st.session_state.collab_editor:
+        st.toast(f"Updated from {client.last_editor}")
         st.session_state.collab_editor = new_doc
         st.session_state.collab_last_sent = new_doc
         st.session_state.collab_status = f"✓ Live update received from {client.last_editor or 'collaborator'}"
