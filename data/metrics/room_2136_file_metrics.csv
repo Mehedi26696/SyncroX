@@ -1,3 +1,0 @@
-ts,room,file,direction,seq,bytes,rtt_ms,srtt_ms,rto_ms,cwnd,ssthresh,event,algo
-1763793391.8964705,2136,Screenshot 2025-06-23 233850.png,upload,1,4096,,,2000.0,1.0,1.0,LOSS,tahoe
-1763793410.547046,2136,Screenshot 2025-06-23 233850.png,upload,1,4096,,,2000.0,1.0,1.0,LOSS,tahoe
