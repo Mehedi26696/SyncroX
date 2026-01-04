@@ -1,0 +1,5 @@
+2026-01-05 00:34:57,064 Connected to 127.0.0.1:9011 as Mehedi
+2026-01-05 00:34:57,067 Received DOC header: DOC 4250 69 server
+2026-01-05 00:34:57,067 Put doc update in queue. Size: 69. Queue size: 1
+2026-01-05 00:34:57,067 Received DOC header: DOC 4250 69 server
+2026-01-05 00:34:57,067 Put doc update in queue. Size: 69. Queue size: 2
