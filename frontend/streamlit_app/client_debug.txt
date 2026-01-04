@@ -1,5 +1,5 @@
-2025-12-30 20:04:13,231 Connected to 127.0.0.1:9011 as AS
-2025-12-30 20:04:13,233 Received DOC header: DOC 8158 69 server
-2025-12-30 20:04:13,233 Put doc update in queue. Size: 69. Queue size: 1
-2025-12-30 20:04:13,234 Received DOC header: DOC 8158 69 server
-2025-12-30 20:04:13,234 Put doc update in queue. Size: 69. Queue size: 2
+2026-01-04 23:31:27,243 Connected to 127.0.0.1:9011 as Abs
+2026-01-04 23:31:27,245 Received DOC header: DOC 2735 69 server
+2026-01-04 23:31:27,245 Put doc update in queue. Size: 69. Queue size: 1
+2026-01-04 23:31:27,246 Received DOC header: DOC 2735 69 server
+2026-01-04 23:31:27,246 Put doc update in queue. Size: 69. Queue size: 1

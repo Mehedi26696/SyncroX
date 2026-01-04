@@ -14,6 +14,7 @@
 \usepackage{enumitem}
 \usepackage{tikz}
 \usetikzlibrary{shapes.geometric, arrows, positioning}
+\usepackage{svg}
 
 % Define colors
 \definecolor{codegreen}{rgb}{0,0.6,0}
@@ -63,47 +64,65 @@
 \begin{document}
 
 % ======================== COVER PAGE ========================
+% Title Page
 \begin{titlepage}
     \centering
     \vspace*{1cm}
+    \includesvg[width=2.5cm]{du}
+
+    {\Huge\bfseries University of Dhaka\par}
+    \vspace{0.5cm}
+    {\Large Department of Computer Science and Engineering\par}
+    \vspace{1.2cm}
     
-    % University Logo (placeholder - user should add logo)
-    % \includegraphics[width=0.2\textwidth]{du_logo.png}\\[1cm]
+        % Project Type Badge
+    \begin{tikzpicture}
+        \node[rectangle, rounded corners=8pt, draw=goldaccent, line width=2pt, 
+              fill=goldaccent!10, inner sep=8pt, drop shadow] {
+            {\large\bfseries\color{primarycolor} NETWORKING PROJECT }
+        };
+    \end{tikzpicture}
+    \vspace{0.5cm}
     
-    {\LARGE\textbf{University of Dhaka}}\\[0.4cm]
-    {\large Department of Computer Science and Engineering}\\[1.5cm]
-    
-    \hrule height 2pt
+    {\color{secondarycolor}\LARGE\bfseries SyncroX\par}
     \vspace{0.3cm}
-    {\Large\textbf{NETWORKING PROJECT PROPOSAL}}\\
+    {\Large A Unified Real-Time Collaboration \& Communication Platform\par}
+    \vspace{0.5cm}
+    
+    {\large\bfseries Course: CSE 3111 - Computer Networking Lab\par}
     \vspace{0.3cm}
-    \hrule height 2pt
-    \vspace{1.5cm}
     
-    {\Huge\textcolor{ducolor}{\textbf{SyncroX}}}\\[0.5cm]
-    {\Large A Unified Real-Time Collaboration \& Communication Platform}\\[2cm]
+   \begin{center}
+                    {\large\bfseries\color{primarycolor} Submitted By:}\\[0.4cm]
+                    {\large H.M. Mehedi Hasan \textbf{(13)}}\\
+                   \\[0.3cm]
+                    {\large MD. Abu Bakar Siddique \textbf{(47)}}\\
+                    
+                \end{center}
+\vspace{0.4cm}
+
+
+
+
+\begin{center}
     
-    {\large\textbf{Course: CSE 3111 - Computer Networking Lab}}\\[2cm]
+{\large\bfseries\color{primarycolor} Submitted To:}\\[0.4cm]
+    \item \textbf{Dr. Shabbir Ahmed} (Professor) \\
+    Department of Computer Science and Engineering
+    \item \textbf{Dr. Md. Mamun-Or-Rashid} (Professor) \\
+    Department of Computer Science and Engineering
+    \item \textbf{Dr. Ismat Rahman} (Associate Professor) \\
+    Department of Computer Science and Engineering
+    \item \textbf{Palash Roy} (Lecturer) \\
+    Department of Computer Science and Engineering
     
-    \begin{minipage}{0.5\textwidth}
-        \centering
-        \textbf{Submitted By:}\\[0.3cm]
-        \textcolor{red}{\textbf{H.M. Mehedi Hasan}}\\
-        \textit{Roll: 13}\\[0.5cm]
-        \textcolor{red}{\textbf{MD. Abu Bakar Siddique}}\\
-        \textit{Roll: 47}
-    \end{minipage}\\[2cm]
-    
-    \begin{minipage}{0.5\textwidth}
-        \centering
-        \textbf{Submitted To:}\\[0.3cm]
-        \textcolor{red}{\textbf{Palash Roy}}\\
-        \textit{Faculty, CSE Department}
-    \end{minipage}\\[2cm]
-    
-    \vfill
-    
-    {\large\textbf{Submission Date: November 17, 2025}}
+\end{center}
+
+
+\vspace{0.2cm}
+
+{\large \centering Submission Date: December 7, 2025\par}
+
     
 \end{titlepage}
 
@@ -151,39 +170,30 @@ Remote collaboration has become essential in modern workflows. SyncroX addresses
     \item Code execution and testing
 \end{itemize}
 
-\subsection{Security and Isolation}
-Code execution platforms require robust security measures. SyncroX demonstrates modern containerization techniques using Docker to provide:
-\begin{itemize}
-    \item Process isolation
-    \item Resource limiting (CPU, memory)
-    \item Network restriction
-    \item Safe multi-language code execution
-\end{itemize}
 
 % ======================== PROBLEM STATEMENT ========================
 \section{Problem Statement}
 
-Modern collaborative development environments face several challenges:
+In modern software development and academic labs, teams often struggle with using multiple disconnected tools for communication, file exchange, and code sharing. In our networking lab, for instance, students frequently collaborate, compare code, troubleshoot, and submit shared outputs. Relying on separate apps for messaging, file transfer, and code viewing leads to confusion, delays, and missing files.
 
-\begin{enumerate}[label=\textbf{P\arabic*.}]
-    \item \textbf{Fragmented Tools}: Developers typically use separate applications for chat (Slack), code collaboration (GitHub), file sharing (Dropbox), and code execution (online IDEs), leading to context switching and reduced productivity.
-    
-    \item \textbf{Network Performance}: File transfer systems often lack sophisticated congestion control, leading to inefficient bandwidth utilization and poor performance over varying network conditions.
-    
-    \item \textbf{Security Risks}: Online code execution platforms must carefully balance functionality with security to prevent malicious code execution.
-    
-    \item \textbf{Real-time Synchronization}: Maintaining consistency across multiple concurrent users editing shared resources requires careful protocol design and conflict resolution.
-    
-    \item \textbf{Educational Implementation}: Students learning networking concepts need practical, hands-on projects that implement theoretical algorithms in real-world scenarios.
-\end{enumerate}
+\subsection{Key Motivations}
 
-\textbf{SyncroX addresses these problems by:}
 \begin{itemize}
-    \item Providing a unified platform integrating all collaboration features
-    \item Implementing production-grade congestion control algorithms with real-time metrics
-    \item Using Docker containerization for secure, isolated code execution
-    \item Designing custom TCP protocols optimized for different service types
-    \item Serving as a comprehensive educational resource for networking students
+    \item \textbf{Mo1: Unified Collaboration}
+    
+    SyncroX integrates messaging, file sharing, and code viewing into one platform, eliminating the need for multiple tools.
+    
+    \item \textbf{Mo2: Real-Time Communication}
+    
+    TCP-based communication ensures quick, low-latency messaging for troubleshooting and coordination.
+    
+    \item \textbf{Mo3: Networking Concepts in Practice}
+    
+    The project applies TCP and HTTP/FastAPI, providing hands-on experience with real-world networking workflows.
+    
+    \item \textbf{Mo4: Easy Code Sharing}
+    
+    SyncroX enables seamless code sharing, helping teams collaborate and troubleshoot efficiently.
 \end{itemize}
 
 % ======================== DESIGN GOALS/OBJECTIVES ========================
@@ -225,15 +235,6 @@ Modern collaborative development environments face several challenges:
     \end{itemize}
 \end{enumerate}
 
-\subsection{Secondary Objectives}
-
-\begin{itemize}
-    \item Modern, intuitive user interface with dark theme
-    \item Support for multiple programming languages (Python, C, C++, Java)
-    \item Comprehensive error handling and logging
-    \item Real-time dashboard for system monitoring
-    \item Binary-safe file transfers with checksum validation
-\end{itemize}
 
 % ======================== PROJECT FEATURES ========================
 \section{Project Features}
@@ -342,34 +343,51 @@ The system follows a client-server architecture with four independent TCP server
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[
-    node distance=2cm,
-    block/.style={rectangle, draw, fill=blue!20, text width=3cm, text centered, rounded corners, minimum height=1cm},
-    server/.style={rectangle, draw, fill=green!20, text width=2.5cm, text centered, rounded corners, minimum height=1cm},
+    node distance=1.2cm and 1cm,
+    block/.style={
+        rectangle, draw,
+        fill=blue!20,
+        text width=3.2cm,
+        text centered,
+        rounded corners,
+        minimum height=1.2cm
+    },
+    server/.style={
+        rectangle, draw,
+        fill=green!20,
+        text width=2.6cm,
+        text centered,
+        rounded corners,
+        minimum height=1.1cm
+    },
     arrow/.style={->, >=stealth, thick}
 ]
 
 % Frontend
-\node [block] (frontend) {Streamlit Frontend\\Port 8501};
+\node [block] (frontend) {Streamlit\\Frontend\\Port 8501};
 
-% Servers
-\node [server, below left=2cm and 1cm of frontend] (chat) {Chat Server\\Port 9009};
-\node [server, below=2cm of frontend, xshift=-1cm] (collab) {Collab Server\\Port 9011};
-\node [server, below=2cm of frontend, xshift=1cm] (file) {File Server\\Port 9010};
-\node [server, below right=2cm and 1cm of frontend] (exec) {Code Exec\\Port 9012};
+% Servers (single aligned row)
+\node [server, below left=of frontend] (chat) {Chat Server\\Port 9009};
+\node [server, below=of frontend] (collab) {Collab Server\\Port 9011};
+\node [server, below right=of frontend] (file) {File Server\\Port 9010};
+\node [server, right=of file] (exec) {Code Exec\\Port 9012};
 
-% Docker
-\node [block, below=1.5cm of exec, fill=yellow!20] (docker) {Docker Sandbox};
+% Docker Sandbox
+\node [block, fill=yellow!20, below=1.8cm of exec] (docker) {Docker Sandbox};
 
-% Arrows
+% Arrows from frontend
 \draw [arrow] (frontend) -- node[left] {TCP} (chat);
 \draw [arrow] (frontend) -- node[left] {TCP} (collab);
 \draw [arrow] (frontend) -- node[right] {TCP} (file);
 \draw [arrow] (frontend) -- node[right] {TCP} (exec);
+
+% Exec to Docker
 \draw [arrow] (exec) -- (docker);
 
 \end{tikzpicture}
 \caption{SyncroX System Architecture}
 \end{figure}
+
 
 \subsection{Communication Flow}
 
@@ -788,21 +806,7 @@ All clients implement:
     \item \textbf{Execution History}: \texttt{data/exec\_output/<session>.txt}
 \end{itemize}
 
-\subsection{Thread Safety}
 
-\textbf{Concurrency Issues Resolved:}
-\begin{itemize}
-    \item \textbf{Problem}: Initial implementation used single buffered stream causing race conditions
-    \item \textbf{Solution}: Separated read (background thread) and write (main thread) channels
-    \item \textbf{Result}: No buffer conflicts, stable multi-user synchronization
-\end{itemize}
-
-\textbf{Synchronization Mechanisms:}
-\begin{itemize}
-    \item Python \texttt{threading.Lock()} for shared data structures
-    \item Daemon threads for automatic cleanup
-    \item Safe socket closure in finally blocks
-\end{itemize}
 
 % ======================== RESULT ANALYSIS ========================
 \section{Result Analysis}
@@ -909,6 +913,57 @@ Java & 400-800 ms & 100-200 ms & 40-60 MB \\
 
 The project provides hands-on experience with theoretical concepts taught in networking courses, making it an excellent educational resource.
 
+% ======================== USER INTERFACE SHOWCASE ========================
+\section{User Interface Showcase}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{App_Screenshots/landing_page.png}
+\caption{Landing Page}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{App_Screenshots/chat_interface.png}
+\caption{Chat Interface}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{App_Screenshots/Code_Editor1.png}
+\caption{Code Editor}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{App_Screenshots/Code_Exec.png}
+\caption{Code Execution}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{App_Screenshots/file_transfer.png}
+\caption{File Transfer}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{App_Screenshots/FileTransferMetrices.png}
+\caption{File Transfer Metrics}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{App_Screenshots/dashboard.png}
+\caption{Dashboard}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{App_Screenshots/System_Dashboard.png}
+\caption{System Dashboard}
+\end{figure}
+
 % ======================== SUMMARY OF THE PROJECT ========================
 \section{Summary of the Project}
 
@@ -946,16 +1001,6 @@ SyncroX successfully demonstrates a production-grade collaborative platform buil
     \item \textbf{Modern UI}: Streamlit-based dark theme interface
 \end{itemize}
 
-\subsection{Project Statistics}
-
-\begin{itemize}
-    \item \textbf{Lines of Code}: ~3000+ (Python)
-    \item \textbf{Backend Servers}: 4
-    \item \textbf{Frontend Pages}: 5
-    \item \textbf{Protocols Implemented}: 4
-    \item \textbf{Algorithms}: 2 (Tahoe, Reno)
-    \item \textbf{Supported Languages}: 4 (Python, C, C++, Java)
-\end{itemize}
 
 % ======================== LIMITATIONS AND FUTURE PLANS ========================
 \section{Limitations and Future Plans}
@@ -1002,164 +1047,29 @@ SyncroX successfully demonstrates a production-grade collaborative platform buil
 \subsection{Future Enhancements}
 
 \subsubsection{Short-term Plans}
-
-\begin{enumerate}
-    \item \textbf{Database Integration}:
-    \begin{itemize}
-        \item PostgreSQL for persistent storage
-        \item Message history and search
-        \item User authentication system
-    \end{itemize}
-    
-    \item \textbf{Enhanced Security}:
-    \begin{itemize}
-        \item Password-protected rooms
-        \item JWT-based authentication
-        \item Rate limiting per user
-        \item IP whitelisting
-    \end{itemize}
-    
-    \item \textbf{Improved Collaboration}:
-    \begin{itemize}
-        \item Operational Transformation (OT) for conflict resolution
-        \item Cursor position sharing
-        \item Syntax highlighting sync
-        \item Version history
-    \end{itemize}
-\end{enumerate}
+\begin{itemize}
+    \item \textbf{Database Integration}: PostgreSQL-based persistent storage, user authentication, and message history.
+    \item \textbf{Enhanced Security}: JWT authentication, password-protected rooms, rate limiting, and IP filtering.
+    \item \textbf{Improved Collaboration}: Conflict resolution using OT, cursor sharing, syntax sync, and version history.
+\end{itemize}
 
 \subsubsection{Long-term Plans}
-
-\begin{enumerate}
-    \item \textbf{Distributed Architecture}:
-    \begin{itemize}
-        \item Redis for shared state
-        \item Load balancing across multiple servers
-        \item Microservices architecture
-        \item Message queue (RabbitMQ/Kafka)
-    \end{itemize}
-    
-    \item \textbf{Advanced Features}:
-    \begin{itemize}
-        \item Video/audio chat integration
-        \item Screen sharing capability
-        \item Whiteboard collaboration
-        \item Git integration for version control
-    \end{itemize}
-    
-    \item \textbf{Extended Code Execution}:
-    \begin{itemize}
-        \item Support for more languages (Go, Rust, JavaScript)
-        \item Package manager integration (pip, npm)
-        \item GPU support for ML workloads
-        \item Notebook-style execution (Jupyter-like)
-    \end{itemize}
-    
-    \item \textbf{Analytics and Monitoring}:
-    \begin{itemize}
-        \item Prometheus/Grafana integration
-        \item Detailed performance metrics
-        \item User behavior analytics
-        \item Network traffic analysis
-    \end{itemize}
-    
-    \item \textbf{Mobile Support}:
-    \begin{itemize}
-        \item Responsive web design
-        \item Native mobile apps (React Native)
-        \item Push notifications
-    \end{itemize}
-\end{enumerate}
-
-\subsubsection{Research Opportunities}
-
 \begin{itemize}
-    \item Implementation of BBR (Bottleneck Bandwidth and RTT) congestion control
-    \item QUIC protocol integration for improved performance
-    \item WebRTC for peer-to-peer file transfers
-    \item Machine learning for predictive congestion control
-    \item Blockchain for decentralized room management
+    \item \textbf{Scalable Architecture}: Redis-based shared state, load balancing, microservices, and message queues.
+    \item \textbf{Advanced Collaboration}: Audio/video chat, screen sharing, whiteboard, and Git integration.
+    \item \textbf{Extended Code Execution}: Multi-language support, package managers, GPU acceleration, and notebook-style execution.
+    \item \textbf{Monitoring and Analytics}: Prometheus/Grafana metrics, user analytics, and traffic monitoring.
+    \item \textbf{Mobile Support}: Responsive UI, native mobile apps, and push notifications.
 \end{itemize}
+
+
 
 % ======================== CONCLUSION ========================
 \section{Conclusion}
 
-SyncroX represents a comprehensive exploration of networking principles through practical implementation. The project successfully bridges the gap between theoretical computer networking concepts and real-world application development.
+SyncroX represents a comprehensive exploration of networking principles through practical implementation. It demonstrates that complex networking systems can be built using foundational principles and modern tools. The project proves that theoretical concepts like congestion control, RTT estimation, and protocol design are not just academic exercises—they are essential building blocks for real-world distributed systems.
 
-\subsection{Learning Outcomes}
 
-Through this project, we gained in-depth understanding of:
-\begin{itemize}
-    \item \textbf{Protocol Design}: Creating efficient, robust application-layer protocols
-    \item \textbf{Congestion Control}: Implementing and comparing Tahoe and Reno algorithms
-    \item \textbf{Concurrent Programming}: Building thread-safe multi-client servers
-    \item \textbf{System Security}: Containerization and resource isolation techniques
-    \item \textbf{Real-time Systems}: Synchronization and state management across distributed clients
-\end{itemize}
 
-\subsection{Project Impact}
-
-SyncroX serves multiple purposes:
-\begin{enumerate}
-    \item \textbf{Educational Tool}: Demonstrates networking concepts in action
-    \item \textbf{Functional Platform}: Provides real collaboration capabilities
-    \item \textbf{Foundation for Research}: Extensible architecture for future enhancements
-    \item \textbf{Portfolio Piece}: Showcases full-stack development skills
-\end{enumerate}
-
-\subsection{Technical Success}
-
-The project successfully:
-\begin{itemize}
-    \item Implements four independent TCP servers with custom protocols
-    \item Demonstrates measurable differences between congestion control algorithms
-    \item Provides secure, isolated code execution environment
-    \item Handles concurrent users with thread-safe operations
-    \item Visualizes complex networking metrics in real-time
-\end{itemize}
-
-\subsection{Acknowledgment of Challenges}
-
-Building SyncroX presented several challenges:
-\begin{itemize}
-    \item \textbf{Concurrency}: Resolved race conditions through careful thread design
-    \item \textbf{Binary Protocols}: Handled mixed text/binary data correctly
-    \item \textbf{Docker Integration}: Managed stdin/stdout with containerized processes
-    \item \textbf{Real-time Sync}: Balanced update frequency with performance
-\end{itemize}
-
-Each challenge provided valuable learning experiences and deeper understanding of networking fundamentals.
-
-\subsection{Final Thoughts}
-
-SyncroX demonstrates that complex networking systems can be built using foundational principles and modern tools. The project proves that theoretical concepts like congestion control, RTT estimation, and protocol design are not just academic exercises—they are essential building blocks for real-world distributed systems.
-
-We hope SyncroX serves as a valuable resource for students learning computer networking and inspires further exploration of these fascinating topics.
-
-\vspace{1cm}
-
-\begin{center}
-\textbf{Thank you for reviewing our project!}
-\end{center}
-
-\vspace{2cm}
-
-% ======================== REFERENCES ========================
-\section*{References}
-
-\begin{enumerate}
-    \item Computer Networking: A Top-Down Approach, Kurose \& Ross, 8th Edition
-    \item TCP/IP Illustrated, Volume 1: The Protocols, W. Richard Stevens
-    \item Python Official Documentation: Socket Programming \\
-    \url{https://docs.python.org/3/library/socket.html}
-    \item Docker Documentation: Container Security \\
-    \url{https://docs.docker.com/engine/security/}
-    \item Streamlit Documentation \\
-    \url{https://docs.streamlit.io/}
-    \item RFC 793: Transmission Control Protocol \\
-    \url{https://tools.ietf.org/html/rfc793}
-    \item RFC 5681: TCP Congestion Control \\
-    \url{https://tools.ietf.org/html/rfc5681}
-\end{enumerate}
 
 \end{document}
