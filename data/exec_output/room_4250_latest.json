@@ -1,0 +1,10 @@
+{
+  "timestamp": 1767551795.0014849,
+  "language": "java",
+  "success": true,
+  "return_code": 0,
+  "time_ms": 1246,
+  "stdout": "Hello, World!\n",
+  "stderr": "",
+  "formatted_output": "[language=java, return_code=0, time=1246 ms, success=True]\nHello, World!"
+}
