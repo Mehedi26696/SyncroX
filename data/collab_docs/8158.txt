@@ -1,0 +1,3 @@
+//LANG:python
+# Welcome to collaborative coding!
+# Start writing your code here...
