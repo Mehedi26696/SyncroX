@@ -114,8 +114,8 @@ class FileTransferMetrics:
             self.ssthresh = max(self.cwnd / 2.0, 1.0)
             self.cwnd = self.ssthresh
 
-        # back off RTO
-        self.rto *= 2.0
+        # back off RTO (cap at 30 seconds to avoid Windows socket timeout overflow)
+        self.rto = min(self.rto * 2.0, 30000.0)
 
         self._log(bytes_sent, None, event="LOSS")
 
@@ -163,8 +163,8 @@ class TcpFileClient:
                 self.file.write(chunk)
                 self.file.flush()
 
-                # RTO-based timeout (minimum 100ms)
-                timeout_sec = max(metrics.rto / 1000.0, 0.1)
+                # RTO-based timeout (min 100ms, max 30 seconds to avoid Windows overflow)
+                timeout_sec = max(min(metrics.rto / 1000.0, 30.0), 0.1)
                 self.sock.settimeout(timeout_sec)
 
                 # wait for ACK <room> <seq>
@@ -208,7 +208,12 @@ class TcpFileClient:
             line = self.file.readline().decode("utf-8").strip()
             if not line:
                 continue
-            name, size_str, created = line.split(maxsplit=2)
+            # Format: <size> <created> <filename>
+            # Size and created first (no spaces), filename last (may have spaces)
+            parts = line.split(maxsplit=2)
+            if len(parts) < 3:
+                continue
+            size_str, created, name = parts
             size = int(size_str)
             result.append((name, size, created))
         return result

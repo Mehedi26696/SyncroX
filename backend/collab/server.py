@@ -14,6 +14,8 @@ os.makedirs(DOC_DIR, exist_ok=True)
 
 # room -> current document text
 docs: dict[str, str] = {}
+# room_lang -> document text (e.g., "1234_python" -> code)
+lang_docs: dict[str, str] = {}
 # room -> set of client sockets
 room_clients: dict[str, set[socket.socket]] = defaultdict(set)
 # client -> username
@@ -23,23 +25,50 @@ room_user_last_set: dict[str, dict[str, float]] = defaultdict(dict)
 
 lock = threading.Lock()
 
+VALID_LANGUAGES = {"python", "c", "cpp", "java"}
+
 
 def valid_room(room: str) -> bool:
     return len(room) == 4 and room.isdigit()
 
 
-def load_doc(room: str) -> str:
-    """Load document content for a room from disk or return default text."""
+def valid_language(lang: str) -> bool:
+    return lang.lower() in VALID_LANGUAGES
+
+
+def get_doc_key(room: str, lang: str) -> str:
+    """Get the key for room+language combination."""
+    return f"{room}_{lang.lower()}"
+
+
+def load_doc(room: str, lang: str = None) -> str:
+    """Load document content for a room (and optionally language) from disk or return default text."""
+    if lang:
+        path = DOC_DIR / f"{room}_{lang.lower()}.txt"
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+        # Return language-specific default
+        defaults = {
+            "python": "# Python code\n# Start writing your code here...\n",
+            "c": "// C code\n#include <stdio.h>\n\nint main() {\n    // Start writing your code here\n    return 0;\n}\n",
+            "cpp": "// C++ code\n#include <iostream>\nusing namespace std;\n\nint main() {\n    // Start writing your code here\n    return 0;\n}\n",
+            "java": "// Java code\npublic class Main {\n    public static void main(String[] args) {\n        // Start writing your code here\n    }\n}\n",
+        }
+        return defaults.get(lang.lower(), "# Start writing your code here...\n")
+    
+    # Legacy: load without language (for backward compatibility)
     path = DOC_DIR / f"{room}.txt"
     if path.exists():
         return path.read_text(encoding="utf-8")
-    # default initial content
     return "# Welcome to collaborative coding!\n# Start writing your code here...\n"
 
 
-def save_doc(room: str, content: str) -> None:
-    """Persist document content for a room to disk."""
-    path = DOC_DIR / f"{room}.txt"
+def save_doc(room: str, content: str, lang: str = None) -> None:
+    """Persist document content for a room (and optionally language) to disk."""
+    if lang:
+        path = DOC_DIR / f"{room}_{lang.lower()}.txt"
+    else:
+        path = DOC_DIR / f"{room}.txt"
     path.write_text(content, encoding="utf-8")
 
 
@@ -54,15 +83,16 @@ def broadcast_doc(
     room: str,
     content: str,
     editor: str,
+    lang: str = "python",
     exclude: socket.socket | None = None,
 ):
     """
     Send updated document to all clients in a room, tagging who edited it.
-    DOC <room> <size> <editor>\n
+    DOC <room> <lang> <size> <editor>\n
     <code_bytes>
     """
     data = content.encode("utf-8")
-    header = f"DOC {room} {len(data)} {editor}\n".encode("utf-8")
+    header = f"DOC {room} {lang} {len(data)} {editor}\n".encode("utf-8")
 
     with lock:
         targets = list(room_clients.get(room, set()))
@@ -110,48 +140,54 @@ def handle_client(conn: socket.socket, addr):
             cmd = parts[0].upper()
 
             if cmd == "JOIN":
-                # JOIN <room>
+                # JOIN <room> [lang]
                 if len(parts) < 2:
                     send_line(conn, "ERROR JOIN needs room")
                     continue
                 room = parts[1]
+                lang = parts[2].lower() if len(parts) >= 3 and valid_language(parts[2]) else "python"
                 if not valid_room(room):
                     send_line(conn, "ERROR Invalid room code")
                     continue
 
+                doc_key = get_doc_key(room, lang)
                 with lock:
-                    # load or create doc
-                    if room not in docs:
-                        docs[room] = load_doc(room)
+                    # load or create doc for this room+language
+                    if doc_key not in lang_docs:
+                        lang_docs[doc_key] = load_doc(room, lang)
                     room_clients[room].add(conn)
                     current_room = room
                     # touch last_set dict so USERS has an entry
                     _ = room_user_last_set[room]
 
                 send_line(conn, f"OK Joined {room}")
-                # send current document
-                content = docs[room]
+                # send current document for this language
+                content = lang_docs[doc_key]
                 data = content.encode("utf-8")
                 # when you first join, treat 'server' as editor
-                header = f"DOC {room} {len(data)} server\n".encode("utf-8")
+                header = f"DOC {room} {lang} {len(data)} server\n".encode("utf-8")
                 try:
                     conn.sendall(header)
                     conn.sendall(data)
                 except OSError:
                     break
-                print(f"[COLLAB] {username} joined room {room}")
+                print(f"[COLLAB] {username} joined room {room} (lang={lang})")
 
             elif cmd == "SET":
-                # SET <room> <size>
-                if len(parts) < 3:
-                    send_line(conn, "ERROR SET needs room and size")
+                # SET <room> <lang> <size>
+                if len(parts) < 4:
+                    send_line(conn, "ERROR SET needs room, lang, and size")
                     continue
                 room = parts[1]
+                lang = parts[2].lower()
                 if not valid_room(room):
                     send_line(conn, "ERROR Invalid room code")
                     continue
+                if not valid_language(lang):
+                    send_line(conn, "ERROR Invalid language")
+                    continue
                 try:
-                    size = int(parts[2])
+                    size = int(parts[3])
                 except ValueError:
                     send_line(conn, "ERROR Invalid size")
                     continue
@@ -171,31 +207,38 @@ def handle_client(conn: socket.socket, addr):
 
                 content = b"".join(chunks).decode("utf-8", errors="replace")
 
+                doc_key = get_doc_key(room, lang)
                 with lock:
-                    docs[room] = content
-                    save_doc(room, content)
+                    lang_docs[doc_key] = content
+                    save_doc(room, content, lang)
                     editor = clients.get(conn, "someone")
                     room_user_last_set[room][editor] = time.time()
 
-                send_line(conn, f"OK SAVED {room}")
-                broadcast_doc(room, content, editor=editor, exclude=conn)
-                print(f"[COLLAB] Updated document in room {room} (from {editor})")
+                send_line(conn, f"OK SAVED {room} {lang}")
+                broadcast_doc(room, content, editor=editor, lang=lang, exclude=conn)
+                print(f"[COLLAB] Updated {lang} document in room {room} (from {editor})")
 
             elif cmd == "GET":
-                # GET <room>
-                if len(parts) < 2:
-                    send_line(conn, "ERROR GET needs room")
+                # GET <room> <lang>
+                if len(parts) < 3:
+                    send_line(conn, "ERROR GET needs room and lang")
                     continue
                 room = parts[1]
+                lang = parts[2].lower()
                 if not valid_room(room):
                     send_line(conn, "ERROR Invalid room code")
                     continue
+                if not valid_language(lang):
+                    send_line(conn, "ERROR Invalid language")
+                    continue
+                
+                doc_key = get_doc_key(room, lang)
                 with lock:
-                    if room not in docs:
-                        docs[room] = load_doc(room)
-                    content = docs[room]
+                    if doc_key not in lang_docs:
+                        lang_docs[doc_key] = load_doc(room, lang)
+                    content = lang_docs[doc_key]
                 data = content.encode("utf-8")
-                header = f"DOC {room} {len(data)} server\n".encode("utf-8")
+                header = f"DOC {room} {lang} {len(data)} server\n".encode("utf-8")
                 try:
                     conn.sendall(header)
                     conn.sendall(data)

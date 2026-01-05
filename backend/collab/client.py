@@ -32,10 +32,11 @@ class TcpCollabClient:
 
         self.room: Optional[str] = None
         self.current_doc: str = ""
+        self.current_lang: str = "python"
         self.last_editor: Optional[str] = None
 
-        # queues for async updates
-        self._doc_updates: "queue.Queue[str]" = queue.Queue()
+        # queues for async updates - now contains (text, lang) tuples
+        self._doc_updates: "queue.Queue[Tuple[str, str]]" = queue.Queue()
         self._users_updates: "queue.Queue[List[Tuple[str, str]]]" = queue.Queue()
 
         # latest snapshots
@@ -53,19 +54,19 @@ class TcpCollabClient:
         except OSError:
             self.alive = False
 
-    def join_room(self, room: str):
-        self._send_line(f"JOIN {room}")
+    def join_room(self, room: str, lang: str = "python"):
+        self._send_line(f"JOIN {room} {lang}")
 
-    def request_doc(self, room: str):
-        self._send_line(f"GET {room}")
+    def request_doc(self, room: str, lang: str = "python"):
+        self._send_line(f"GET {room} {lang}")
 
     def request_users(self, room: str):
         """Ask server for active users in a room."""
         self._send_line(f"USERS {room}")
 
-    def set_code(self, room: str, code: str):
+    def set_code(self, room: str, code: str, lang: str = "python"):
         data = code.encode("utf-8")
-        self._send_line(f"SET {room} {len(data)}")
+        self._send_line(f"SET {room} {lang} {len(data)}")
         try:
             self.sock.sendall(data)
         except OSError:
@@ -93,14 +94,15 @@ class TcpCollabClient:
                     self.logger.error(f"Server error: {header}")
                     continue
 
-                # DOC <room> <size> <editor>
+                # DOC <room> <lang> <size> <editor>
                 if parts[0] == "DOC":
                     self.logger.info(f"Received DOC header: {header}")
-                    if len(parts) < 3:
+                    if len(parts) < 4:
                         continue
                     room = parts[1]
-                    size = int(parts[2])
-                    editor = parts[3] if len(parts) >= 4 else "unknown"
+                    lang = parts[2]
+                    size = int(parts[3])
+                    editor = parts[4] if len(parts) >= 5 else "unknown"
 
                     remaining = size
                     chunks: list[bytes] = []
@@ -117,11 +119,9 @@ class TcpCollabClient:
                     self.room = room
                     self.current_doc = text
                     self.last_editor = editor
-                    self.room = room
-                    self.current_doc = text
-                    self.last_editor = editor
-                    self._doc_updates.put(text)
-                    self.logger.info(f"Put doc update in queue. Size: {len(text)}. Queue size: {self._doc_updates.qsize()}")
+                    self.current_lang = lang
+                    self._doc_updates.put((text, lang))
+                    self.logger.info(f"Put doc update in queue. Lang: {lang}, Size: {len(text)}. Queue size: {self._doc_updates.qsize()}")
 
                 # USERS <room> name1:status1,name2:status2,...
                 elif parts[0] == "USERS":
@@ -154,13 +154,19 @@ class TcpCollabClient:
 
     # ------------- helpers used by Streamlit -------------
 
-    def get_latest_doc(self) -> Optional[str]:
-        """Return the latest document content if there is an update, else None."""
+    def get_latest_doc(self, for_lang: str = None) -> Optional[Tuple[str, str]]:
+        """
+        Return the latest document update as (text, lang) if there is one, else None.
+        If for_lang is specified, only return updates for that language.
+        """
         latest = None
         while True:
             try:
                 item = self._doc_updates.get_nowait()
-                latest = item
+                text, lang = item
+                # If filtering by language, only accept matching updates
+                if for_lang is None or lang == for_lang:
+                    latest = item
             except queue.Empty:
                 break
         return latest

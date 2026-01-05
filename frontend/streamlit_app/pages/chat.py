@@ -13,6 +13,7 @@ from streamlit_autorefresh import st_autorefresh
 from backend.tcp_chat.streamlit_client import TcpChatClient
 import time
 from PIL import Image
+from config import SERVER_HOST, CHAT_PORT
 import base64
 import io
 
@@ -247,8 +248,8 @@ if client is None:
     
     try:
         st.session_state.chat_client = TcpChatClient(
-            host="127.0.0.1",
-            port=9009,
+            host=SERVER_HOST,
+            port=CHAT_PORT,
             username=st.session_state.username,
         )
         # Give server time to respond to HELLO

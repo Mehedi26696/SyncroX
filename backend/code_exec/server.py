@@ -3,6 +3,7 @@ import threading
 import tempfile
 import subprocess
 import time
+import re
 from pathlib import Path
 import os
 
@@ -49,6 +50,24 @@ def run_in_docker(cmd_inside: list[str], workdir: Path, stdin_data: bytes = b"",
     return success, stdout, stderr, proc.returncode, ms
 
 
+def extract_java_class_name(code: str) -> str:
+    """
+    Extract the public class name from Java code.
+    Returns the class name or None if not found.
+    """
+    # Look for 'public class ClassName' pattern
+    # Handles: public class Foo, public class Foo extends Bar, public class Foo implements Baz
+    match = re.search(r'\bpublic\s+class\s+(\w+)', code)
+    if match:
+        return match.group(1)
+    
+    # If no public class, look for any class definition
+    match = re.search(r'\bclass\s+(\w+)', code)
+    if match:
+        return match.group(1)
+    
+    return None
+
 
 def execute_code(language: str, code: bytes, stdin_data: bytes):
     with tempfile.TemporaryDirectory() as tmpdir_str:
@@ -88,21 +107,34 @@ def execute_code(language: str, code: bytes, stdin_data: bytes):
             return run_in_docker(["/sandbox/main"], tmpdir, stdin_data)
 
         elif language == "java":
-            src = tmpdir / "Main.java"
+            # Extract public class name from code
+            code_str = code.decode("utf-8", errors="replace")
+            class_name = extract_java_class_name(code_str)
+            
+            if not class_name:
+                return False, b"", b"Error: Could not find a public class in Java code.\nMake sure you have 'public class ClassName' in your code.", -1, 0
+            
+            print(f"[JAVA] Detected class name: {class_name}")
+            
+            # Save file with the correct class name
+            src = tmpdir / f"{class_name}.java"
             src.write_bytes(code)
 
+            # Java compilation - give more time for javac
             ok, out, err, rc, _ = run_in_docker(
-                ["bash", "-lc", "cd /sandbox && javac Main.java"],
+                ["bash", "-lc", f"cd /sandbox && javac {class_name}.java"],
                 tmpdir,
-                timeout=5,
+                timeout=15,  # Increased: javac can be slow
             )
             if not ok:
                 return False, b"", err, rc, 0
 
+            # Java execution - JVM startup is slow, need more time
             return run_in_docker(
-                ["bash", "-lc", "cd /sandbox && java Main"],
+                ["bash", "-lc", f"cd /sandbox && java {class_name}"],
                 tmpdir,
                 stdin_data,
+                timeout=10,  # Increased: JVM startup takes 2-5 seconds
             )
 
         else:

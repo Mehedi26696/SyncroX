@@ -1,0 +1,33 @@
+def calculate_sum_and_product(num1, num2):
+  """
+  Calculates the sum and product of two integers.
+
+  Args:
+    num1: The first integer.
+    num2: The second integer.
+
+  Returns:
+    A tuple containing the sum and the product (sum, product).
+  """
+  # Calculate the sum
+  total_sum = num1 + num2
+  # Calculate the product
+  total_product = num1 * num2
+  
+  # Return both values
+  return total_sum, total_product
+
+# --- Example Usage ---
+
+# 1. Define two integers
+number_a = 10
+number_b = 5
+
+# 2. Call the function with your numbers
+sum_result, product_result = calculate_sum_and_product(number_a, number_b)
+
+# 3. Print the results
+print(f"The first number is: {number_a}")
+print(f"The second number is: {number_b}")
+print(f"The sum of the numbers is: {sum_result}")
+print(f"The product of the numbers is: {product_result}")

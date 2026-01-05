@@ -14,7 +14,9 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from backend.collab.client import TcpCollabClient
 from backend.code_exec.client import TcpExecClient
+from backend.exec_history import get_history_manager
 from PIL import Image
+from config import SERVER_HOST, COLLAB_PORT, EXEC_PORT
 
 # ========================================================================
 # COLLABORATIVE CODE EDITOR PAGE
@@ -193,11 +195,13 @@ if "collab_client" not in st.session_state:
 if "collab_username" not in st.session_state:
     st.session_state.collab_username = username
 if "collab_editor" not in st.session_state:
-    st.session_state.collab_editor = "# Welcome to collaborative coding!\n# Start writing your code here..."
+    st.session_state.collab_editor = ""  # Start empty, wait for server doc
 if "collab_status" not in st.session_state:
     st.session_state.collab_status = ""
 if "collab_language" not in st.session_state:
     st.session_state.collab_language = "python"
+if "collab_initialized" not in st.session_state:
+    st.session_state.collab_initialized = False  # Track if we've received initial doc from server
 if "collab_output" not in st.session_state:
     st.session_state.collab_output = ""
 if "collab_last_sent" not in st.session_state:
@@ -234,9 +238,10 @@ if st.session_state.collab_client is not None and not st.session_state.collab_cl
 
 if st.session_state.collab_client is None:
     try:
-        collab_client = TcpCollabClient(host="127.0.0.1", port=9011, username=username)
-        collab_client.join_room(room)
-        collab_client.request_doc(room) # Explicitly request doc to ensure sync
+        collab_client = TcpCollabClient(host=SERVER_HOST, port=COLLAB_PORT, username=username)
+        # Join room with current language
+        collab_client.join_room(room, st.session_state.collab_language)
+        collab_client.request_doc(room, st.session_state.collab_language) # Explicitly request doc to ensure sync
         st.session_state.collab_client = collab_client
         st.session_state.collab_status = f"Connected to room {room} as {username}."
     except Exception as e:
@@ -246,7 +251,7 @@ if st.session_state.collab_client is None:
 # Exec client
 if st.session_state.exec_client is None:
     try:
-        st.session_state.exec_client = TcpExecClient(host="127.0.0.1", port=9012)
+        st.session_state.exec_client = TcpExecClient(host=SERVER_HOST, port=EXEC_PORT)
     except Exception as e:
         st.error(f"Could not connect to exec server: {e}")
         st.stop()
@@ -256,46 +261,53 @@ exec_client: TcpExecClient = st.session_state.exec_client
 
 # ------------------ LIVE SYNC: AUTO-SAVE & PULL UPDATES ------------------
 
-# Auto-save: if user changed code and 2 seconds passed, broadcast it
+# Get current language
+current_lang = st.session_state.collab_language
+
+# Auto-save: ONLY if initialized (received doc from server) and user changed code and 2 seconds passed
 now = time.time()
-if (st.session_state.collab_editor != st.session_state.collab_last_sent and 
+if (st.session_state.collab_initialized and  # Only save after we've received initial doc
+    st.session_state.collab_editor != st.session_state.collab_last_sent and 
+    st.session_state.collab_editor.strip() != "" and  # Don't save empty content
     now - st.session_state.collab_last_sent_time > 2.0):
     try:
-        # Save language metadata in first line as comment
-        lang_meta = f"//LANG:{st.session_state.collab_language}\n"
-        code_with_meta = lang_meta + st.session_state.collab_editor
-        
         if client.alive:
-            client.set_code(room, code_with_meta)
+            # Send code with language info (no need for metadata in content anymore)
+            client.set_code(room, st.session_state.collab_editor, current_lang)
             st.session_state.collab_last_sent = st.session_state.collab_editor
             st.session_state.collab_last_sent_time = now
-            st.session_state.collab_status = "✓ Auto-saved (live sync active)"
+            st.session_state.collab_status = f"✓ Auto-saved ({current_lang})"
         else:
              st.session_state.collab_status = "⚠️ Connection lost. Please refresh."
     except Exception as e:
         st.session_state.collab_status = f"Auto-save error: {e}"
 
+# Periodically request latest doc from server (every 1.5 seconds) to ensure sync
+if "collab_last_poll_time" not in st.session_state:
+    st.session_state.collab_last_poll_time = 0.0
+
+if now - st.session_state.collab_last_poll_time > 1.5:
+    try:
+        if client.alive:
+            client.request_doc(room, current_lang)
+            st.session_state.collab_last_poll_time = now
+    except Exception:
+        pass
+
 # Pull updates from server (other users' changes)
-new_doc = client.get_latest_doc()
-if new_doc is not None:
-    # Extract language metadata if present
-    if new_doc.startswith("//LANG:"):
-        lines = new_doc.split("\n", 1)
-        lang_line = lines[0]
-        actual_code = lines[1] if len(lines) > 1 else ""
-        
-        # Extract language from metadata
-        lang = lang_line.replace("//LANG:", "").strip()
-        if lang in ["python", "c", "cpp", "java"]:
-            st.session_state.collab_language = lang
-        
-        new_doc = actual_code
+doc_update = client.get_latest_doc(for_lang=current_lang)
+if doc_update is not None:
+    new_doc, update_lang = doc_update
     
-    if new_doc != st.session_state.collab_editor:
+    # Only apply if same language as current
+    if update_lang == current_lang and new_doc != st.session_state.collab_editor:
+        st.session_state.collab_initialized = True  # Mark as initialized - we have real data from server
         st.toast(f"Updated from {client.last_editor}")
         st.session_state.collab_editor = new_doc
         st.session_state.collab_last_sent = new_doc
         st.session_state.collab_status = f"✓ Live update received from {client.last_editor or 'collaborator'}"
+        # Force rerun to immediately show the updated code in the text area
+        st.rerun()
 
 # Active users (if supported by your client)
 if hasattr(client, "request_users") and hasattr(client, "get_latest_users"):
@@ -328,15 +340,27 @@ with top_left:
         st.caption("⌨️ You are typing... (will auto-save in 2s)")
 
 with top_right:
-    if st.button("Disconnect", use_container_width=True):
-        try:
-            client.close()
-        except Exception:
-            pass
-        st.session_state.collab_client = None
-        st.session_state.exec_client = None
-        st.session_state.collab_status = "Disconnected from collab server."
-        st.stop()
+    col_refresh, col_disconnect = st.columns(2)
+    with col_refresh:
+        if st.button("🔄 Refresh", use_container_width=True, key="refresh_btn"):
+            # Request latest doc from server for current language
+            try:
+                if client.alive:
+                    client.request_doc(room, current_lang)
+                    st.session_state.collab_status = f"🔄 Refreshing {current_lang}..."
+                    st.rerun()
+            except Exception as e:
+                st.session_state.collab_status = f"Refresh error: {e}"
+    with col_disconnect:
+        if st.button("Disconnect", use_container_width=True):
+            try:
+                client.close()
+            except Exception:
+                pass
+            st.session_state.collab_client = None
+            st.session_state.exec_client = None
+            st.session_state.collab_status = "Disconnected from collab server."
+            st.stop()
 
 if st.session_state.collab_status:
     st.info(st.session_state.collab_status)
@@ -344,6 +368,10 @@ if st.session_state.collab_status:
 st.markdown("### Shared code")
 
 # ------------------ LANGUAGE SELECTOR ------------------
+
+# Track previous language to detect changes
+if "collab_prev_language" not in st.session_state:
+    st.session_state.collab_prev_language = st.session_state.collab_language
 
 selected_lang = st.selectbox(
     "Language",
@@ -353,7 +381,25 @@ selected_lang = st.selectbox(
     else 0,
     key="collab_language_select",
 )
-st.session_state.collab_language = selected_lang
+
+# Check if language changed
+if selected_lang != st.session_state.collab_prev_language:
+    st.session_state.collab_language = selected_lang
+    st.session_state.collab_prev_language = selected_lang
+    st.session_state.collab_initialized = False  # Reset initialized flag on language change
+    # Request doc for new language from server
+    try:
+        if client.alive:
+            client.request_doc(room, selected_lang)
+            st.session_state.collab_status = f"🔄 Loading {selected_lang} code..."
+            # Reset editor state to avoid showing old language's code
+            st.session_state.collab_last_sent = ""
+            st.session_state.collab_last_sent_time = 0.0
+            st.rerun()
+    except Exception as e:
+        st.session_state.collab_status = f"Error loading {selected_lang}: {e}"
+else:
+    st.session_state.collab_language = selected_lang
 
 # ------------------ EDITOR & STDIN ------------------
 
@@ -458,9 +504,28 @@ if run_clicked:
                         st.session_state.exec_history = []
                     st.session_state.exec_history.append(record)
 
-                    # keep only last 50 runs
+                    # keep only last 50 runs in session
                     if len(st.session_state.exec_history) > 50:
                         st.session_state.exec_history = st.session_state.exec_history[-50:]
+
+                    # ---- Save to persistent history (room-wise JSON file) ----
+                    try:
+                        history_manager = get_history_manager()
+                        history_manager.add_execution(
+                            room=room,
+                            user=username,
+                            language=lang,
+                            code=code_to_run,
+                            stdin=stdin_text,
+                            stdout=out_text,
+                            stderr=err_text,
+                            return_code=rc,
+                            success=bool(success),
+                            time_ms=time_ms,
+                        )
+                        print(f"[STREAMLIT DEBUG] Saved to persistent history for room {room}")
+                    except Exception as hist_err:
+                        print(f"[STREAMLIT DEBUG] Error saving to persistent history: {hist_err}")
 
                     print(f"[STREAMLIT DEBUG] Added to exec_history. Total records: {len(st.session_state.exec_history)}")
                     
@@ -511,6 +576,25 @@ if run_clicked:
                         "success": False,
                         "time_ms": 0,
                     })
+                    
+                    # ---- Save error to persistent history ----
+                    try:
+                        history_manager = get_history_manager()
+                        history_manager.add_execution(
+                            room=room,
+                            user=username,
+                            language=lang,
+                            code=code_to_run,
+                            stdin=stdin_text,
+                            stdout="",
+                            stderr=str(e),
+                            return_code=-1,
+                            success=False,
+                            time_ms=0,
+                        )
+                    except Exception as hist_err:
+                        print(f"[STREAMLIT DEBUG] Error saving error to persistent history: {hist_err}")
+                    
                     print(f"[STREAMLIT DEBUG] Exception logged to exec_history. Total: {len(st.session_state.exec_history)}")
                     st.session_state.is_executing = False
                     st.error(f"❌ Exception: {e}")
