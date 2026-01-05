@@ -49,6 +49,12 @@ class TcpExecClient:
         """
         Returns: (success, stdout_text, stderr_text, return_code, time_ms)
         """
+        # Use fresh connection for each execution to avoid buffer pollution
+        try:
+            self._reconnect()
+        except Exception as e:
+            return False, "", f"Could not connect to exec server: {e}", -1, 0
+            
         print(f"[CLIENT] Executing {language} code in room {room}, code_len={len(code)}")
         code_bytes = code.encode("utf-8")
         stdin_bytes = stdin_text.encode("utf-8")

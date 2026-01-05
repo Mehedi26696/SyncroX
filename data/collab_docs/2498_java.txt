@@ -1,0 +1,21 @@
+import java.util.Scanner;
+
+public class PrintNumbers {
+    public static void main(String[] args) {
+        Scanner input = new Scanner(System.in);
+         
+        
+        // Read the user input
+        int n = input.nextInt();
+        
+        System.out.println("Numbers from 1 to " + n + ":");
+        
+        // Loop from i = 1 up to and including n
+        for (int i = 1; i <= n; i++) {
+            System.out.println(i); // Print each number on a new line
+        }
+        
+        // Close the scanner to prevent resource leaks
+        input.close();
+    }
+}

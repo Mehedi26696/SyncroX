@@ -1,0 +1,17 @@
+{
+  "room": "3333",
+  "last_updated": 1767635715.9737659,
+  "last_updated_readable": "2026-01-05 23:55:15",
+  "total_messages": 1,
+  "messages": [
+    {
+      "id": "3333_Mehedi_1767635715972",
+      "timestamp": 1767635715.972766,
+      "datetime": "2026-01-05 23:55:15",
+      "room": "3333",
+      "username": "Mehedi",
+      "message": "Mehedi joined the room",
+      "type": "system"
+    }
+  ]
+}
