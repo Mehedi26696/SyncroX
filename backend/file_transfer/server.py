@@ -97,6 +97,9 @@ def handle_client(conn: socket.socket, addr):
                 remaining = size
                 seq = 1
                 try:
+                    # Set a timeout so server doesn't block forever if client drops chunk
+                    conn.settimeout(30.0)  # 30 second timeout per chunk
+                    
                     with dest.open("wb") as f:
                         # receive file in chunks and ACK each chunk
                         while remaining > 0:
@@ -108,7 +111,7 @@ def handle_client(conn: socket.socket, addr):
                                 # Read from socket
                                 try:
                                     chunk = conn.recv(min(CHUNK_SIZE, remaining))
-                                except ConnectionResetError:
+                                except (ConnectionResetError, socket.timeout):
                                     break
                                 if not chunk:
                                     break
@@ -119,6 +122,9 @@ def handle_client(conn: socket.socket, addr):
                             ack_line = f"ACK {room} {seq}\n".encode("utf-8")
                             conn.sendall(ack_line)
                             seq += 1
+                    
+                    # Reset timeout for other commands
+                    conn.settimeout(None)
 
                     if remaining != 0:
                         conn.sendall(b"ERROR Incomplete upload\n")
@@ -186,11 +192,18 @@ def handle_client(conn: socket.socket, addr):
                 size = path.stat().st_size
                 header = f"OK {size}\n"
                 conn.sendall(header.encode("utf-8"))
+                import random
+                try:
+                    from config import SYNCROX_LOSS_PROB
+                except ImportError:
+                    SYNCROX_LOSS_PROB = 0.0
                 with path.open("rb") as f:
                     while True:
                         chunk = f.read(4096)
                         if not chunk:
                             break
+                        # Note: No loss simulation on download - would require
+                        # client-side retry protocol which isn't implemented
                         conn.sendall(chunk)
                 print(
                     f"[FILE] Sent {filename} ({size} bytes) "
