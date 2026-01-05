@@ -22,5 +22,14 @@ FILE_PORT = 9010
 COLLAB_PORT = 9011
 EXEC_PORT = 9012
 
+
 # Streamlit frontend port
 FRONTEND_PORT = 8501
+
+# =============================
+# FILE TRANSFER SIMULATION
+# =============================
+# Set the probability of simulated packet loss (0.0 = no loss, 0.1 = 10% loss, 0.5 = 50% loss)
+# Used by file_transfer client and server for testing Tahoe/Reno
+# WARNING: Non-zero values will cause upload failures until retransmission logic is added
+SYNCROX_LOSS_PROB = 0.1  # Set to 0.0 for reliable transfers

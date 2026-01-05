@@ -2,8 +2,12 @@
 import socket
 import threading
 
-HOST = "127.0.0.1"
-PORT = 9009
+
+try:
+    from config import SERVER_HOST, CHAT_PORT
+except ImportError:
+    SERVER_HOST = "127.0.0.1"
+    CHAT_PORT = 9009
 
 
 def recv_loop(sock: socket.socket):
@@ -20,7 +24,7 @@ def main():
     username = input("Enter username: ").strip() or "user"
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((HOST, PORT))
+    sock.connect((SERVER_HOST, CHAT_PORT))
 
     # send HELLO
     sock.sendall(f"HELLO {username}\n".encode("utf-8"))

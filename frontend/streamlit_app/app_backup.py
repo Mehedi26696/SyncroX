@@ -16,13 +16,21 @@ PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-import streamlit as st
-from streamlit_autorefresh import st_autorefresh
 
 from backend.tcp_chat.streamlit_client import TcpChatClient
 from backend.file_transfer.client import TcpFileClient
 from backend.collab.client import TcpCollabClient
 from backend.code_exec.client import TcpExecClient
+
+# --- Import config for host/port ---
+try:
+    from config import SERVER_HOST, CHAT_PORT, FILE_PORT, COLLAB_PORT, EXEC_PORT
+except ImportError:
+    SERVER_HOST = "127.0.0.1"
+    CHAT_PORT = 9009
+    FILE_PORT = 9010
+    COLLAB_PORT = 9011
+    EXEC_PORT = 9012
 
 
 
@@ -139,8 +147,9 @@ def chat_page():
                 type="primary",
                 use_container_width=True,
             )
+
         with col2:
-            st.caption("Server: 127.0.0.1:9009 (TCP chat server)")
+            st.caption(f"Server: {SERVER_HOST}:{CHAT_PORT} (TCP chat server)")
 
         if connect_clicked:
             if not username.strip():
@@ -148,8 +157,8 @@ def chat_page():
             else:
                 try:
                     st.session_state.chat_client = TcpChatClient(
-                        host="127.0.0.1",
-                        port=9009,
+                        host=SERVER_HOST,
+                        port=CHAT_PORT,
                         username=username.strip(),
                     )
                     st.session_state.chat_status = (
@@ -318,7 +327,7 @@ def collab_page():
             try:
                 # Collab TCP client
                 client = TcpCollabClient(
-                    host="127.0.0.1", port=9011, username=username.strip()
+                    host=SERVER_HOST, port=COLLAB_PORT, username=username.strip()
                 )
                 client.join_room(room_input.strip())
 
@@ -333,7 +342,7 @@ def collab_page():
 
                 # Exec TCP client (for Run button)
                 st.session_state.exec_client = TcpExecClient(
-                    host="127.0.0.1", port=9012
+                    host=SERVER_HOST, port=EXEC_PORT
                 )
             except Exception as e:
                 st.error(f"Could not connect to collab/exec server: {e}")
@@ -563,7 +572,7 @@ def file_transfer_page():
         data = up_file.read()
         if st.button("⬆ Upload with metrics", type="primary", use_container_width=True):
             try:
-                client = TcpFileClient(host="127.0.0.1", port=9010, algo=algo)
+                client = TcpFileClient(host=SERVER_HOST, port=FILE_PORT, algo=algo)
                 resp = client.upload_bytes(room, filename, data)
                 client.close()
                 st.success(f"Upload finished. Server responded: `{resp}`")
@@ -579,7 +588,7 @@ def file_transfer_page():
     # ---- List / download section ----
     st.subheader("Files in this room")
     try:
-        client = TcpFileClient(host="127.0.0.1", port=9010, algo=algo)
+        client = TcpFileClient(host=SERVER_HOST, port=FILE_PORT, algo=algo)
         files = client.list_files(room)
     except Exception as e:
         files = []
@@ -641,13 +650,13 @@ def dashboard_page():
         "it takes to open a TCP connection (rough latency)."
     )
 
-    host = "127.0.0.1"  # for lab/demo; change to your server IP if needed
+    host = SERVER_HOST
 
     services = [
-        ("Chat server", "Real-time text chat over TCP rooms.", host, 9009),
-        ("File server", "Reliable TCP file transfer scoped by 4-digit room.", host, 9010),
-        ("Collab server", "Shared code editor & live document sync.", host, 9011),
-        ("Exec server", "Docker-sandboxed code execution (Python/C/C++/Java).", host, 9012),
+        ("Chat server", "Real-time text chat over TCP rooms.", host, CHAT_PORT),
+        ("File server", "Reliable TCP file transfer scoped by 4-digit room.", host, FILE_PORT),
+        ("Collab server", "Shared code editor & live document sync.", host, COLLAB_PORT),
+        ("Exec server", "Docker-sandboxed code execution (Python/C/C++/Java).", host, EXEC_PORT),
     ]
 
     cols = st.columns(2)

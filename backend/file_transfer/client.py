@@ -127,9 +127,14 @@ class FileTransferMetrics:
 
 
 class TcpFileClient:
-    def __init__(self, host: str = "127.0.0.1", port: int = 9010, algo: str = "reno"):
-        self.host = host
-        self.port = port
+    try:
+        from config import SERVER_HOST, FILE_PORT
+    except ImportError:
+        SERVER_HOST = "127.0.0.1"
+        FILE_PORT = 9010
+    def __init__(self, host: str = None, port: int = None, algo: str = "reno"):
+        self.host = host if host is not None else SERVER_HOST
+        self.port = port if port is not None else FILE_PORT
         self.algo = algo.lower()  # 'reno' or 'tahoe'
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))
@@ -151,6 +156,13 @@ class TcpFileClient:
         remaining = size
         offset = 0
 
+        # --- Simulated packet loss ---
+        import random
+        try:
+            from config import SYNCROX_LOSS_PROB
+        except ImportError:
+            SYNCROX_LOSS_PROB = 0.0
+
         try:
             while remaining > 0:
                 chunk = data[offset : offset + CHUNK_SIZE]
@@ -158,29 +170,61 @@ class TcpFileClient:
                 if bytes_to_send == 0:
                     break
 
-                # send chunk
-                send_time = time.time()
-                self.file.write(chunk)
-                self.file.flush()
+                # Retry loop for this chunk (retransmit on loss/timeout)
+                max_retries = 5
+                retry_count = 0
+                chunk_sent_successfully = False
 
-                # RTO-based timeout (min 100ms, max 30 seconds to avoid Windows overflow)
-                timeout_sec = max(min(metrics.rto / 1000.0, 30.0), 0.1)
-                self.sock.settimeout(timeout_sec)
+                while not chunk_sent_successfully and retry_count < max_retries:
+                    # ALWAYS send the chunk - we simulate loss by ignoring ACK instead
+                    # This keeps server byte count in sync
+                    send_time = time.time()
+                    self.file.write(chunk)
+                    self.file.flush()
 
-                # wait for ACK <room> <seq>
-                try:
-                    ack_line = self.file.readline().decode("utf-8").strip()
-                except socket.timeout:
-                    metrics.on_loss(bytes_to_send)
-                else:
-                    parts = ack_line.split()
-                    if len(parts) == 3 and parts[0] == "ACK":
-                        # compute RTT
-                        rtt_ms = (time.time() - send_time) * 1000.0
-                        metrics.on_ack(bytes_to_send, rtt_ms)
-                    else:
-                        # malformed ACK, log as loss
+                    # Simulate loss: pretend we didn't get ACK (triggers timeout + cwnd adjustment)
+                    simulate_loss_this_chunk = random.random() < SYNCROX_LOSS_PROB
+
+                    if simulate_loss_this_chunk:
+                        print(f"[SIM LOSS] Simulating ACK loss for chunk {metrics.seq + 1}")
+                        # Don't wait for ACK - treat as timeout immediately
                         metrics.on_loss(bytes_to_send)
+                        retry_count += 1
+                        print(f"[RETRANSMIT] Chunk {metrics.seq} simulated loss, retry {retry_count}/{max_retries}")
+                        # Small delay to simulate RTO wait
+                        time.sleep(0.1)
+                        continue  # "Retry" this chunk (resend)
+
+                    # RTO-based timeout (min 100ms, max 30 seconds to avoid Windows overflow)
+                    timeout_sec = max(min(metrics.rto / 1000.0, 30.0), 0.1)
+                    self.sock.settimeout(timeout_sec)
+
+                    # wait for ACK <room> <seq>
+                    try:
+                        ack_line = self.file.readline().decode("utf-8").strip()
+                    except socket.timeout:
+                        # Timeout - treat as loss, will retry
+                        metrics.on_loss(bytes_to_send)
+                        retry_count += 1
+                        print(f"[RETRANSMIT] Chunk {metrics.seq} timed out, retry {retry_count}/{max_retries}")
+                        continue  # Retry this chunk
+                    else:
+                        parts = ack_line.split()
+                        if len(parts) == 3 and parts[0] == "ACK":
+                            # compute RTT
+                            rtt_ms = (time.time() - send_time) * 1000.0
+                            metrics.on_ack(bytes_to_send, rtt_ms)
+                            chunk_sent_successfully = True
+                        else:
+                            # malformed ACK, log as loss and retry
+                            metrics.on_loss(bytes_to_send)
+                            retry_count += 1
+                            print(f"[RETRANSMIT] Malformed ACK, retry {retry_count}/{max_retries}")
+                            continue
+
+                if not chunk_sent_successfully:
+                    print(f"[ERROR] Chunk failed after {max_retries} retries, aborting upload")
+                    return "ERROR Max retries exceeded"
 
                 offset += bytes_to_send
                 remaining -= bytes_to_send

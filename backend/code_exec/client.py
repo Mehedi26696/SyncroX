@@ -2,10 +2,17 @@ import socket
 from typing import Tuple, Optional
 
 
+
+try:
+    from config import SERVER_HOST, EXEC_PORT
+except ImportError:
+    SERVER_HOST = "127.0.0.1"
+    EXEC_PORT = 9012
+
 class TcpExecClient:
-    def __init__(self, host: str = "127.0.0.1", port: int = 9012):
-        self.host = host
-        self.port = port
+    def __init__(self, host: str = None, port: int = None):
+        self.host = host if host is not None else SERVER_HOST
+        self.port = port if port is not None else EXEC_PORT
         self._connect()
 
     def _connect(self):
