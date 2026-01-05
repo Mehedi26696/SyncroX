@@ -83,7 +83,7 @@ def execute_code(language: str, code: bytes, stdin_data: bytes):
             src.write_bytes(code)
 
             ok, out, err, rc, _ = run_in_docker(
-                ["bash", "-lc", "cd /sandbox && gcc main.c -O2 -o main"],
+                ["bash", "-c", "cd /sandbox && gcc main.c -O2 -o main"],
                 tmpdir,
                 timeout=5,
             )
@@ -97,7 +97,7 @@ def execute_code(language: str, code: bytes, stdin_data: bytes):
             src.write_bytes(code)
 
             ok, out, err, rc, _ = run_in_docker(
-                ["bash", "-lc", "cd /sandbox && g++ main.cpp -O2 -o main"],
+                ["bash", "-c", "cd /sandbox && g++ main.cpp -O2 -o main"],
                 tmpdir,
                 timeout=5,
             )
@@ -122,7 +122,7 @@ def execute_code(language: str, code: bytes, stdin_data: bytes):
 
             # Java compilation - give more time for javac
             ok, out, err, rc, _ = run_in_docker(
-                ["bash", "-lc", f"cd /sandbox && javac {class_name}.java"],
+                ["bash", "-c", f"cd /sandbox && javac {class_name}.java"],
                 tmpdir,
                 timeout=15,  # Increased: javac can be slow
             )
@@ -131,7 +131,7 @@ def execute_code(language: str, code: bytes, stdin_data: bytes):
 
             # Java execution - JVM startup is slow, need more time
             return run_in_docker(
-                ["bash", "-lc", f"cd /sandbox && java {class_name}"],
+                ["bash", "-c", f"cd /sandbox && java {class_name}"],
                 tmpdir,
                 stdin_data,
                 timeout=10,  # Increased: JVM startup takes 2-5 seconds

@@ -1,10 +1,10 @@
 {
-  "timestamp": 1767611646.6387517,
-  "language": "java",
-  "success": false,
-  "return_code": -1,
-  "time_ms": 0,
-  "stdout": "",
-  "stderr": "list index out of range",
-  "formatted_output": "[error executing java] list index out of range"
+  "timestamp": 1767616289.59528,
+  "language": "cpp",
+  "success": true,
+  "return_code": 0,
+  "time_ms": 1441,
+  "stdout": "Hello World!\n",
+  "stderr": "",
+  "formatted_output": "[language=cpp, return_code=0, time=1441 ms, success=True]\nHello World!"
 }

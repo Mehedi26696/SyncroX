@@ -168,3 +168,5 @@ if __name__ == "__main__":
 
 # Start only frontend
 # python start_all_servers_venv.py --frontend-only
+
+# streamlit run frontend/streamlit_app/app.py --server.address 0.0.0.0

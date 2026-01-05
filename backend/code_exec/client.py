@@ -6,9 +6,27 @@ class TcpExecClient:
     def __init__(self, host: str = "127.0.0.1", port: int = 9012):
         self.host = host
         self.port = port
+        self._connect()
+
+    def _connect(self):
+        """Establish connection to exec server"""
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))
         self.f = self.sock.makefile("rwb")
+
+    def _reconnect(self):
+        """Reconnect to exec server (used after protocol errors)"""
+        print("[CLIENT] Reconnecting to exec server...")
+        try:
+            self.f.close()
+        except Exception:
+            pass
+        try:
+            self.sock.close()
+        except Exception:
+            pass
+        self._connect()
+        print("[CLIENT] Reconnected successfully")
 
     def _send_line(self, text: str):
         self.f.write((text + "\n").encode("utf-8"))
@@ -42,7 +60,13 @@ class TcpExecClient:
 
         header = header.decode("utf-8").strip()
         parts = header.split()
-        if parts[0] != "RESULT" or len(parts) != 6:
+        if len(parts) < 1 or parts[0] != "RESULT" or len(parts) != 6:
+            # Protocol error - connection stream is likely corrupted
+            # Reconnect to get a fresh connection
+            try:
+                self._reconnect()
+            except Exception as e:
+                print(f"[CLIENT] Reconnect failed: {e}")
             return False, "", f"Malformed response: {header}", -1, 0
 
         success_flag = parts[1]
