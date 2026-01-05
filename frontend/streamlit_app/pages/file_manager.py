@@ -11,6 +11,7 @@ if PROJECT_ROOT not in sys.path:
 import streamlit as st
 from backend.file_transfer.client import TcpFileClient
 from PIL import Image
+from config import SERVER_HOST, FILE_PORT
 
 # ============================================================================
 # FILE MANAGER PAGE
@@ -251,7 +252,7 @@ if up_file is not None:
     if st.button("⬆️ Upload File", type="primary", use_container_width=True):
         data = up_file.getvalue()
         try:
-            client = TcpFileClient(host="127.0.0.1", port=9010, algo=algo)
+            client = TcpFileClient(host=SERVER_HOST, port=FILE_PORT, algo=algo)
             with st.spinner(f"Uploading {filename}..."):
                 resp = client.upload_bytes(st.session_state.current_room, filename, data)
             client.close()
@@ -272,7 +273,7 @@ st.markdown("---")
 st.subheader("📂 Files in This Room")
 
 try:
-    client = TcpFileClient(host="127.0.0.1", port=9010, algo=algo)
+    client = TcpFileClient(host=SERVER_HOST, port=FILE_PORT, algo=algo)
     files = client.list_files(st.session_state.current_room)
 except Exception as e:
     files = []

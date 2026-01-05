@@ -12,6 +12,7 @@ if PROJECT_ROOT not in sys.path:
 
 import streamlit as st
 from PIL import Image
+from config import SERVER_HOST, CHAT_PORT, FILE_PORT, COLLAB_PORT, EXEC_PORT
 
 try:
     import pandas as pd
@@ -327,12 +328,11 @@ def check_tcp_server(host: str, port: int, timeout: float = 0.5):
 # ---- Server Status Section ----
 st.markdown('<div class="section-header"><h2>🖥️ Server Status</h2></div>', unsafe_allow_html=True)
 
-host = "127.0.0.1"
 services = [
-    ("💬 Chat Server", "Real-time messaging over TCP", host, 9009),
-    ("📁 File Server", "File transfer with congestion control", host, 9010),
-    ("🤝 Collab Server", "Shared code editor and sync", host, 9011),
-    ("⚙️ Exec Server", "Docker-sandboxed code execution", host, 9012),
+    ("💬 Chat Server", "Real-time messaging over TCP", SERVER_HOST, CHAT_PORT),
+    ("📁 File Server", "File transfer with congestion control", SERVER_HOST, FILE_PORT),
+    ("🤝 Collab Server", "Shared code editor and sync", SERVER_HOST, COLLAB_PORT),
+    ("⚙️ Exec Server", "Docker-sandboxed code execution", SERVER_HOST, EXEC_PORT),
 ]
 
 cols = st.columns(2)
