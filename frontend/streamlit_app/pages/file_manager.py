@@ -21,97 +21,155 @@ from config import SERVER_HOST, FILE_PORT
 icon_path = os.path.join(PROJECT_ROOT, "assets", "image.png")
 page_icon = Image.open(icon_path) if os.path.exists(icon_path) else "📁"
 
-st.set_page_config(page_title="File Transfer - SyncroX", page_icon=page_icon, layout="wide")
+st.set_page_config(
+    page_title="File Transfer - SyncroX",
+    page_icon=page_icon,
+    layout="wide",
+    
+)
 
-# Apply custom CSS for Raleway font, black background & SyncroX theme
+# Apply custom CSS for Raleway font, new color scheme & SyncroX theme
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
     
     * {
         font-family: 'Raleway', sans-serif !important;
+        font-size: 18px;
     }
     
     .stApp {
-        background-color: #000000;
+        background-color: #ebfbee;
     }
     
     .main {
-        background-color: #000000;
+        background-color: #ebfbee;
     }
     
     [data-testid="stSidebar"] {
-        background-color: #0a0a0a;
-        border-right: 1px solid rgba(3, 192, 132, 0.25);
+        background-color: #d3f9d8;
+        border-right: 2px solid #087f5b;
+    }
+
+    /* Sidebar text colors (match main page) */
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] div,
+    [data-testid="stSidebar"] label {
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] .stMarkdown {
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stNotificationContentInfo"] {
+        color: #000000 !important;
     }
     
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Raleway', sans-serif !important;
-        color: #f9fafb !important;
+        color: #087f5b !important;
     }
+    
+    h1 { font-size: 3rem !important; }
+    h2 { font-size: 2.5rem !important; }
+    h3 { font-size: 2rem !important; }
+    h4 { font-size: 1.5rem !important; }
 
     p, div, span, label {
         font-family: 'Raleway', sans-serif !important;
-        color: #e5e7eb;
+        color: #2b8a3e;
     }
 
     /* Global buttons */
     div.stButton > button {
-        background-color: #03C084 !important;
-        color: #020617 !important;
+        background-color: #087f5b !important;
+        color: #ebfbee !important;
         border-radius: 8px !important;
         border: none !important;
         font-weight: 800 !important;
-        padding: 0.4rem 0.8rem !important;
+        padding: 0.6rem 1rem !important;
+        font-size: 1.3rem !important;
+    }
+    div.stButton > button * {
+        color: #ebfbee !important;
     }
     div.stButton > button:hover {
-        background-color: #02a673 !important;
-        color: #f9fafb !important;
+        background-color: #006E6D !important;
+        color: #ebfbee !important;
+    }
+    div.stButton > button:hover * {
+        color: #ebfbee !important;
+    }
+    
+    /* Download button specific */
+    div.stDownloadButton > button {
+        background-color: #b2f2bb !important;
+        color: #087f5b !important;
+        border-radius: 8px !important;
+        border: 2px solid #087f5b !important;
+        font-weight: 800 !important;
+        padding: 0.6rem 1rem !important;
+        font-size: 1.3rem !important;
+    }
+    div.stDownloadButton > button * {
+        color: #087f5b !important;
+    }
+    div.stDownloadButton > button:hover {
+        background-color: #d3f9d8 !important;
+        color: #087f5b !important;
+    }
+    div.stDownloadButton > button:hover * {
+        color: #087f5b !important;
     }
 
     /* Sidebar headings */
     [data-testid="stSidebar"] h3 {
-        color: #03C084 !important;
+        color: #087f5b !important;
         font-weight: 700 !important;
+        font-size: 1.5rem !important;
     }
 
     /* Sidebar info box */
     .stAlert {
-        background-color: #0d0d0d !important;
-        border-left: 4px solid #03C084 !important;
-        color: #e5e7eb !important;
+        background-color: #d3f9d8 !important;
+        border-left: 4px solid #087f5b !important;
+        color: #087f5b !important;
+        font-size: 1.1rem !important;
     }
 
     /* Sidebar navigation buttons */
     [data-testid="stSidebar"] button {
-        background-color: #03C084 !important;
-        color: #020617 !important;
+        background-color: #087f5b !important;
+        color: #ebfbee !important;
         border-radius: 8px !important;
         border: none !important;
         font-weight: 700 !important;
         margin-bottom: 8px !important;
+        font-size: 1.1rem !important;
+        padding: 0.6rem 1rem !important;
     }
     [data-testid="stSidebar"] button:hover {
-        background-color: #02a673 !important;
-        color: #f9fafb !important;
+        background-color: #006E6D !important;
+        color: #ebfbee !important;
     }
 
     /* Disabled nav (current page) */
     [data-testid="stSidebar"] button[disabled] {
-        background-color: #064e3b !important;
-        color: #9ca3af !important;
+        background-color: #b2f2bb !important;
+        color: #087f5b !important;
         opacity: 0.9 !important;
     }
 
-    /* Logout secondary button */
+    /* Logout secondary button (match main page) */
     button[kind="secondary"] {
-        background-color: #111827 !important;
-        color: #e5e7eb !important;
-        border: 1px solid #374151 !important;
+        background-color: #b2f2bb !important;
+        color: #087f5b !important;
+        border: 2px solid #087f5b !important;
+        font-size: 1.1rem !important;
     }
     button[kind="secondary"]:hover {
-        border-color: #03C084 !important;
-        background-color: #1f2933 !important;
+        border-color: #006E6D !important;
+        background-color: #d3f9d8 !important;
     }
 
     /* File uploader styling */
@@ -126,17 +184,38 @@ st.markdown("""
 
     /* Radio (algorithm selector) */
     .stRadio > label {
-        color: #e5e7eb !important;
-        font-weight: 500 !important;
+        color: #087f5b !important;
+        font-weight: 600 !important;
+        font-size: 1.4rem !important;
     }
 
     /* Metrics (Algorithm / etc.) */
     .stMetric {
-        background-color: #020617 !important;
-        padding: 14px !important;
+        background-color: #d3f9d8 !important;
+        padding: 18px !important;
         border-radius: 12px !important;
-        border: 1px solid rgba(3, 192, 132, 0.35) !important;
-        box-shadow: 0 0 10px rgba(3, 192, 132, 0.25);
+        border: 3px solid #087f5b !important;
+        box-shadow: 0 2px 10px rgba(8, 127, 91, 0.25) !important;
+    }
+    [data-testid="stMetric"] {
+        background-color: #d3f9d8 !important;
+        padding: 12px !important;
+        border-radius: 12px !important;
+        border: 2px solid #087f5b !important;
+        box-shadow: 0 2px 10px rgba(8, 127, 91, 0.25) !important;
+    }
+    [data-testid="stMetric"] > div {
+        background-color: transparent !important;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #087f5b !important;
+        font-weight: 600 !important;
+        font-size: 1.2rem !important;
+    }
+    [data-testid="stMetricValue"] {
+        color: #006E6D !important;
+        font-weight: 700 !important;
+        font-size: 1.8rem !important;
     }
 
     /* Upload & list sections subtle card feel via headings spacing */
@@ -319,6 +398,4 @@ if client:
         pass
 
 st.markdown("---")
-st.caption(
-    "💡 Files are scoped to your room. Uses TCP with Tahoe/Reno congestion control simulation."
-)
+
