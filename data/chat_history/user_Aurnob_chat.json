@@ -1,0 +1,26 @@
+{
+  "username": "Aurnob",
+  "last_updated": 1767620716.873919,
+  "last_updated_readable": "2026-01-05 19:45:16",
+  "total_messages": 2,
+  "messages": [
+    {
+      "id": "2498_Aurnob_1767620716370",
+      "timestamp": 1767620716.370481,
+      "datetime": "2026-01-05 19:45:16",
+      "room": "2498",
+      "username": "Aurnob",
+      "message": "Well come me",
+      "type": "text"
+    },
+    {
+      "id": "2498_Aurnob_1767620716764",
+      "timestamp": 1767620716.7640233,
+      "datetime": "2026-01-05 19:45:16",
+      "room": "2498",
+      "username": "Aurnob",
+      "message": "Well come me",
+      "type": "text"
+    }
+  ]
+}

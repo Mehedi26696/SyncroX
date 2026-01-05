@@ -353,10 +353,16 @@ def render_main_app():
             st.session_state.is_logged_in = False
             st.session_state.username = ""
             st.session_state.current_room = ""
-            # Clear all client connections
+            # Clear all client connections and chat state
+            keys_to_remove = []
             for key in list(st.session_state.keys()):
-                if key.endswith('_client'):
-                    st.session_state.pop(key)
+                if key.endswith('_client') or key.startswith('chat_') or key.startswith('collab_') or key.startswith('exec_'):
+                    keys_to_remove.append(key)
+            for key in keys_to_remove:
+                try:
+                    del st.session_state[key]
+                except:
+                    pass
             st.rerun()
     
     # Main content area

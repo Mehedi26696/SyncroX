@@ -1,89 +1,11 @@
-2026-01-05 18:29:11,302 Connected to 127.0.0.1:9011 as Mehedi
-2026-01-05 18:29:11,308 Received DOC header: DOC 4250 python 824 server
-2026-01-05 18:29:11,309 Put doc update in queue. Lang: python, Size: 824. Queue size: 1
-2026-01-05 18:29:11,310 Received DOC header: DOC 4250 python 824 server
-2026-01-05 18:29:11,311 Put doc update in queue. Lang: python, Size: 824. Queue size: 2
-2026-01-05 18:29:11,312 Received DOC header: DOC 4250 python 824 server
-2026-01-05 18:29:11,313 Put doc update in queue. Lang: python, Size: 824. Queue size: 3
-2026-01-05 18:29:13,092 Received DOC header: DOC 4250 python 824 server
-2026-01-05 18:29:13,094 Put doc update in queue. Lang: python, Size: 824. Queue size: 1
-2026-01-05 18:29:14,643 Received DOC header: DOC 4250 python 824 server
-2026-01-05 18:29:14,647 Put doc update in queue. Lang: python, Size: 824. Queue size: 1
-2026-01-05 18:29:16,614 Received DOC header: DOC 4250 python 824 server
-2026-01-05 18:29:16,616 Put doc update in queue. Lang: python, Size: 824. Queue size: 1
-2026-01-05 18:29:18,961 Received DOC header: DOC 4250 python 824 server
-2026-01-05 18:29:18,962 Put doc update in queue. Lang: python, Size: 824. Queue size: 1
-2026-01-05 18:29:22,876 Received DOC header: DOC 4250 python 824 server
-2026-01-05 18:29:22,880 Put doc update in queue. Lang: python, Size: 824. Queue size: 1
-2026-01-05 18:29:29,796 Received DOC header: DOC 4250 python 824 server
-2026-01-05 18:29:29,798 Put doc update in queue. Lang: python, Size: 824. Queue size: 1
-2026-01-05 18:29:29,815 Received DOC header: DOC 4250 java 128 server
-2026-01-05 18:29:29,816 Put doc update in queue. Lang: java, Size: 128. Queue size: 2
-2026-01-05 18:29:32,637 Received DOC header: DOC 4250 java 128 server
-2026-01-05 18:29:32,639 Put doc update in queue. Lang: java, Size: 128. Queue size: 1
-2026-01-05 18:29:55,401 Received DOC header: DOC 4250 java 128 server
-2026-01-05 18:29:55,403 Put doc update in queue. Lang: java, Size: 128. Queue size: 1
-2026-01-05 18:29:55,425 Received DOC header: DOC 4250 c 576 server
-2026-01-05 18:29:55,459 Put doc update in queue. Lang: c, Size: 576. Queue size: 2
-2026-01-05 18:29:57,238 Received DOC header: DOC 4250 c 576 server
-2026-01-05 18:29:57,238 Put doc update in queue. Lang: c, Size: 576. Queue size: 1
-2026-01-05 18:29:59,215 Received DOC header: DOC 4250 c 576 server
-2026-01-05 18:29:59,216 Put doc update in queue. Lang: c, Size: 576. Queue size: 1
-2026-01-05 18:30:01,198 Received DOC header: DOC 4250 c 576 server
-2026-01-05 18:30:01,199 Put doc update in queue. Lang: c, Size: 576. Queue size: 1
-2026-01-05 18:30:05,720 Received DOC header: DOC 4250 c 576 server
-2026-01-05 18:30:05,723 Put doc update in queue. Lang: c, Size: 576. Queue size: 1
-2026-01-05 18:30:18,979 Received DOC header: DOC 4250 c 576 server
-2026-01-05 18:30:18,982 Put doc update in queue. Lang: c, Size: 576. Queue size: 1
-2026-01-05 18:30:19,003 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:19,004 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 2
-2026-01-05 18:30:20,926 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:20,928 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:23,593 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:23,595 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:25,602 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:25,604 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:27,550 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:27,551 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:29,568 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:29,571 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:31,555 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:31,556 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:33,682 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:33,683 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:35,582 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:35,583 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:37,602 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:37,604 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:39,566 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:39,566 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:41,575 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:41,576 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:43,578 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:43,584 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:45,564 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:45,567 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:47,651 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:47,652 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:54,583 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:54,584 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:30:58,447 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:30:58,449 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:31:00,921 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:31:00,922 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:31:02,907 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:31:02,908 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:31:04,910 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:31:04,913 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:31:06,923 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:31:06,925 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:31:08,912 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:31:08,914 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:31:10,919 Received DOC header: DOC 4250 cpp 68 server
-2026-01-05 18:31:10,921 Put doc update in queue. Lang: cpp, Size: 68. Queue size: 1
-2026-01-05 18:31:13,276 Received DOC header: DOC 4250 cpp 122 server
-2026-01-05 18:31:13,278 Put doc update in queue. Lang: cpp, Size: 122. Queue size: 1
-2026-01-05 18:31:20,093 Received DOC header: DOC 4250 cpp 122 server
-2026-01-05 18:31:20,096 Put doc update in queue. Lang: cpp, Size: 122. Queue size: 1
-2026-01-05 18:31:23,603 Received DOC header: DOC 4250 cpp 122 server
-2026-01-05 18:31:23,604 Put doc update in queue. Lang: cpp, Size: 122. Queue size: 1
+2026-01-05 19:55:46,390 Connected to 10.22.39.83:9011 as ABS
+2026-01-05 19:55:46,393 Received DOC header: DOC 2498 python 48 server
+2026-01-05 19:55:46,393 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-05 19:55:46,395 Received DOC header: DOC 2498 python 48 server
+2026-01-05 19:55:46,396 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-05 19:55:46,397 Received DOC header: DOC 2498 python 48 server
+2026-01-05 19:55:46,421 Put doc update in queue. Lang: python, Size: 48. Queue size: 2
+2026-01-05 19:55:47,902 Received DOC header: DOC 2498 python 48 server
+2026-01-05 19:55:47,902 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-05 19:55:49,859 Received DOC header: DOC 2498 python 48 server
+2026-01-05 19:55:49,864 Put doc update in queue. Lang: python, Size: 48. Queue size: 1

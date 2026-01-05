@@ -13,8 +13,8 @@ Change SERVER_HOST to the IP address of the machine running the servers.
 # ============================================================================
 
 # Change this to your server's IP address for multi-device access
-# SERVER_HOST = "10.22.39.83"
-SERVER_HOST = "127.0.0.1"
+SERVER_HOST = "10.22.39.83"
+# SERVER_HOST = "127.0.0.1"
 
 # Server ports (usually don't need to change these)
 CHAT_PORT = 9009

@@ -229,13 +229,45 @@ def handle_image_upload():
 if "chat_client" not in st.session_state:
     st.session_state.chat_client = None
 if "chat_log" not in st.session_state:
-    st.session_state.chat_log = []  # List of {"type": "message"|"system", "sender": str, "text": str}
+    st.session_state.chat_log = []  # List of {"type": "message"|"system", "sender": str, "text": str, "msg_id": int}
 if "chat_status" not in st.session_state:
     st.session_state.chat_status = ""
 if "chat_room" not in st.session_state:
     st.session_state.chat_room = ""
 if "chat_message" not in st.session_state:
     st.session_state.chat_message = ""
+if "chat_history_buffer" not in st.session_state:
+    st.session_state.chat_history_buffer = []
+if "chat_history_loaded" not in st.session_state:
+    st.session_state.chat_history_loaded = False
+if "chat_history_loading" not in st.session_state:
+    st.session_state.chat_history_loading = False
+if "chat_seen_messages" not in st.session_state:
+    st.session_state.chat_seen_messages = set()  # Track seen message hashes to prevent duplicates
+if "chat_current_user" not in st.session_state:
+    st.session_state.chat_current_user = ""
+if "chat_seen_by" not in st.session_state:
+    st.session_state.chat_seen_by = {}  # msg_id -> list of usernames who have seen it
+if "chat_pending_seen" not in st.session_state:
+    st.session_state.chat_pending_seen = set()  # msg_ids to mark as seen
+
+# Reset chat state if user or room changed (e.g., after logout/login)
+if st.session_state.chat_current_user != st.session_state.username or st.session_state.chat_room != st.session_state.current_room:
+    # User or room changed - reset all chat state
+    if st.session_state.chat_client:
+        try:
+            st.session_state.chat_client.close()
+        except:
+            pass
+    st.session_state.chat_client = None
+    st.session_state.chat_log = []
+    st.session_state.chat_seen_messages = set()
+    st.session_state.chat_history_buffer = []
+    st.session_state.chat_history_loaded = False
+    st.session_state.chat_current_user = st.session_state.username
+    st.session_state.chat_room = ""
+    st.session_state.chat_seen_by = {}
+    st.session_state.chat_pending_seen = set()
 
 st.header("Real-time Chat")
 st.caption(f"Room: `{st.session_state.current_room}` • User: `{st.session_state.username}`")
@@ -258,8 +290,15 @@ if client is None:
         # Join the room (server will auto-create if doesn't exist)
         st.session_state.chat_client.join_room(st.session_state.current_room)
         
+        # Set current_room immediately (don't wait for server response)
+        st.session_state.chat_client.current_room = st.session_state.current_room
+        
         # Wait for server response
         time.sleep(0.2)
+        
+        # Request chat history for this room (only if not already loaded)
+        if not st.session_state.chat_history_loaded:
+            st.session_state.chat_client.request_history(50)
         
         st.session_state.chat_room = st.session_state.current_room
         st.session_state.chat_status = f"Connected to room {st.session_state.current_room}"
@@ -278,34 +317,136 @@ if current_room and current_room != st.session_state.chat_room:
 
 # Drain messages from TCP client into chat_log
 new_lines = client.get_new_messages()
+current_user = st.session_state.username.strip().lower()
+import hashlib
+
 for line in new_lines:
     if line.startswith("MSG "):
-        # Format: "MSG <room> <username>: <message>"
-        parts = line.split(maxsplit=2)
-        if len(parts) >= 3:
-            msg_content = parts[2]  # "username: message"
-            if ": " in msg_content:
-                sender, text = msg_content.split(": ", 1)
-                is_me = (sender == st.session_state.username)
-                st.session_state.chat_log.append({
-                    "type": "message",
-                    "sender": sender,
-                    "text": text,
-                    "is_me": is_me
-                })
-    elif line.startswith("IMG "):
-        # Format: "IMG <room> <username> <base64>"
+        # Format: "MSG <room> <msg_id> <username>: <message>"
         parts = line.split(maxsplit=3)
         if len(parts) >= 4:
-            sender = parts[2]
-            img_data = parts[3]
-            is_me = (sender == st.session_state.username)
-            st.session_state.chat_log.append({
-                "type": "image",
-                "sender": sender,
-                "data": img_data,
-                "is_me": is_me
+            msg_id = int(parts[2])
+            msg_content = parts[3]  # "username: message"
+            if ": " in msg_content:
+                sender, text = msg_content.split(": ", 1)
+                sender = sender.strip()
+                text = text.strip()  # Normalize text
+                is_me = (sender.lower() == current_user)
+                
+                # Create a unique hash to prevent duplicates (use normalized content)
+                msg_hash = hashlib.md5(f"{sender.lower()}:{text}".encode()).hexdigest()[:16]
+                if msg_hash not in st.session_state.chat_seen_messages:
+                    st.session_state.chat_seen_messages.add(msg_hash)
+                    st.session_state.chat_log.append({
+                        "type": "message",
+                        "sender": sender,
+                        "text": text,
+                        "is_me": is_me,
+                        "msg_id": msg_id
+                    })
+                    # Mark for seen (if not our own message)
+                    if not is_me:
+                        st.session_state.chat_pending_seen.add(msg_id)
+                    # Initialize seen_by for this message
+                    if msg_id not in st.session_state.chat_seen_by:
+                        st.session_state.chat_seen_by[msg_id] = [sender] if is_me else []
+                        
+    elif line.startswith("IMG "):
+        # Format: "IMG <room> <msg_id> <username> <base64>"
+        parts = line.split(maxsplit=4)
+        if len(parts) >= 5:
+            msg_id = int(parts[2])
+            sender = parts[3].strip()
+            img_data = parts[4].strip()
+            is_me = (sender.lower() == current_user)
+            
+            # Create a unique hash to prevent duplicates (use normalized content)
+            img_hash = hashlib.md5(f"img:{sender.lower()}:{img_data[:100]}".encode()).hexdigest()[:16]
+            if img_hash not in st.session_state.chat_seen_messages:
+                st.session_state.chat_seen_messages.add(img_hash)
+                st.session_state.chat_log.append({
+                    "type": "image",
+                    "sender": sender,
+                    "data": img_data,
+                    "is_me": is_me,
+                    "msg_id": msg_id
+                })
+                # Mark for seen (if not our own message)
+                if not is_me:
+                    st.session_state.chat_pending_seen.add(msg_id)
+                # Initialize seen_by for this message
+                if msg_id not in st.session_state.chat_seen_by:
+                    st.session_state.chat_seen_by[msg_id] = [sender] if is_me else []
+    
+    elif line.startswith("SEEN_BY "):
+        # Format: "SEEN_BY <room> <msg_id> <user1,user2,...>"
+        parts = line.split(maxsplit=3)
+        if len(parts) >= 4:
+            msg_id = int(parts[2])
+            seen_users = parts[3].split(",")
+            st.session_state.chat_seen_by[msg_id] = seen_users
+    
+    elif line.startswith("HISTORY "):
+        # Format: "HISTORY <room> <count>" - marks start of history
+        st.session_state.chat_history_loading = True
+        st.session_state.chat_history_buffer = []
+    
+    elif line.startswith("HIST "):
+        # Format: "HIST <type> <timestamp> <sender> <content>"
+        # Note: timestamp has _ instead of space (e.g., 2026-01-05_12:30:45)
+        parts = line.split(maxsplit=4)
+        if len(parts) >= 5:
+            msg_type = parts[1]  # text, image, system
+            timestamp = parts[2].replace("_", " ")  # Restore space in timestamp
+            sender = parts[3].strip()
+            content = parts[4].strip()  # Normalize content
+            
+            # Case-insensitive comparison for is_me check
+            is_me = (sender.lower() == current_user)
+            
+            # Add to seen messages to prevent duplicates with real-time messages (use normalized content)
+            if msg_type == "image":
+                hist_hash = hashlib.md5(f"img:{sender.lower()}:{content[:100]}".encode()).hexdigest()[:16]
+            else:
+                hist_hash = hashlib.md5(f"{sender.lower()}:{content}".encode()).hexdigest()[:16]
+            st.session_state.chat_seen_messages.add(hist_hash)
+            
+            if msg_type == "system":
+                st.session_state.chat_history_buffer.append({
+                    "type": "system",
+                    "text": f"[{timestamp}] {content}",
+                    "is_history": True
+                })
+            elif msg_type == "image":
+                st.session_state.chat_history_buffer.append({
+                    "type": "image",
+                    "sender": sender,
+                    "data": content,
+                    "is_me": is_me,
+                    "is_history": True
+                })
+            else:  # text
+                st.session_state.chat_history_buffer.append({
+                    "type": "message",
+                    "sender": sender,
+                    "text": content,
+                    "is_me": is_me,
+                    "is_history": True
+                })
+    
+    elif line == "HISTORY_END":
+        # End of history - prepend history buffer to chat log
+        if hasattr(st.session_state, 'chat_history_buffer') and st.session_state.chat_history_buffer:
+            # Add separator
+            st.session_state.chat_history_buffer.append({
+                "type": "system",
+                "text": "─── Previous messages ───"
             })
+            # Prepend history to chat log
+            st.session_state.chat_log = st.session_state.chat_history_buffer + st.session_state.chat_log
+            st.session_state.chat_history_buffer = []
+        st.session_state.chat_history_loading = False
+        st.session_state.chat_history_loaded = True
 
     elif line.startswith("SYSTEM "):
         st.session_state.chat_log.append({"type": "system", "text": line[7:]})
@@ -333,59 +474,91 @@ st.markdown("### Messages")
 st.markdown("""
 <style>
 .chat-message {
-    padding: 8px 12px;
+    padding: 10px 14px;
     border-radius: 18px;
-    margin: 6px 0;
-    max-width: 22%;
+    margin: 4px 0;
+    max-width: 70%;
     word-wrap: break-word;
     font-family: 'Raleway', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 0.9rem;
+    font-size: 0.92rem;
     line-height: 1.4;
     background-color: #111827;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
 
 /* Me (right side – SyncroX green bubble) */
 .message-me {
     margin-left: auto;
     text-align: left;
-    background: #03C084;
+    background: linear-gradient(135deg, #03C084 0%, #02a673 100%);
     color: #020617;
-    border-bottom-right-radius: 4px;
+    border-bottom-right-radius: 6px;
 }
 
 /* Others (left side – dark bubble) */
 .message-other {
     margin-right: auto;
     text-align: left;
-    background: rgba(17, 24, 39, 0.95);
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
     color: #e5e7eb;
-    border-bottom-left-radius: 4px;
-            
+    border: 1px solid rgba(55, 65, 81, 0.5);
+    border-bottom-left-radius: 6px;
 }
 
 /* Sender label */
 .message-sender {
-    font-size: 0.92rem;
-    font-weight: 600;
-    opacity: 0.85;
-    margin-bottom: 2px;
-    color: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    opacity: 0.75;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.message-me .message-sender {
+    color: #064e3b;
+}
+
+.message-other .message-sender {
+    color: #9ca3af;
 }
 
 /* Message text */
 .message-text {
-    font-size: 0.9rem;
-    line-height: 1.45;
+    font-size: 0.92rem;
+    line-height: 1.5;
     color: inherit;
+}
+
+/* Seen by indicator */
+.seen-by {
+    font-size: 0.65rem;
+    color: #6b7280;
+    margin-top: 4px;
+    opacity: 0.8;
+}
+
+.message-me .seen-by {
+    color: #064e3b;
+    text-align: right;
+}
+
+.message-other .seen-by {
+    color: #9ca3af;
 }
 
 /* System messages (centered, subtle) */
 .system-message {
     text-align: center;
-    color: #9ca3af;
-    font-size: 0.8rem;
-    margin: 10px 0;
+    color: #6b7280;
+    font-size: 0.75rem;
+    margin: 12px 0;
     font-style: italic;
+    padding: 6px 12px;
+    background: rgba(31, 41, 55, 0.5);
+    border-radius: 12px;
+    display: inline-block;
+    width: 100%;
 }
 
 /* Image styling with CSS-only Lightbox (Focus to zoom) */
@@ -511,10 +684,51 @@ img_other_b64 = get_image_base64(icon_other_path)
 avatar_me_src = f"data:image/png;base64,{img_me_b64}" if img_me_b64 else ""
 avatar_other_src = f"data:image/png;base64,{img_other_b64}" if img_other_b64 else ""
 
+# Helper to format seen by list
+def format_seen_by(msg_id, sender, current_username):
+    """Format the 'Seen by' text for a message."""
+    seen_list = st.session_state.chat_seen_by.get(msg_id, [])
+    if not seen_list:
+        return ""
+    
+    # Filter out the sender (they sent it, don't show as "seen")
+    others = [u for u in seen_list if u.lower() != sender.lower()]
+    if not others:
+        return ""
+    
+    # Format names nicely
+    if len(others) == 1:
+        return f"👁 Seen by {others[0]}"
+    elif len(others) == 2:
+        return f"👁 Seen by {others[0]} and {others[1]}"
+    elif len(others) <= 4:
+        return f"👁 Seen by {', '.join(others[:-1])} and {others[-1]}"
+    else:
+        return f"👁 Seen by {', '.join(others[:3])} and {len(others) - 3} others"
+
+# Send seen receipts for pending messages
+if st.session_state.chat_pending_seen and client:
+    for msg_id in list(st.session_state.chat_pending_seen):
+        try:
+            client.mark_seen(msg_id)
+        except:
+            pass
+    st.session_state.chat_pending_seen.clear()
+
 # Message container with scrollable area
 chat_container = st.container(height=450)
+
+# Find the last message from current user to show "Seen by" only on that one
+messages_to_show = st.session_state.chat_log[-100:]
+last_own_msg_index = -1
+for i in range(len(messages_to_show) - 1, -1, -1):
+    msg = messages_to_show[i]
+    if isinstance(msg, dict) and msg.get("is_me") and msg.get("type") in ("message", "image"):
+        last_own_msg_index = i
+        break
+
 with chat_container:
-    for msg in st.session_state.chat_log[-100:]:
+    for idx, msg in enumerate(messages_to_show):
         if isinstance(msg, dict):
             if msg["type"] == "system":
                 st.markdown(f'<div class="system-message">{msg["text"]}</div>', unsafe_allow_html=True)
@@ -523,6 +737,14 @@ with chat_container:
                 row_class = "row-me" if is_me else "row-other"
                 bubble_class = "message-me" if is_me else "message-other"
                 sender_name = "You" if is_me else msg["sender"]
+                msg_id = msg.get("msg_id")
+                
+                # Get seen by info (only show for last own message)
+                seen_html = ""
+                if is_me and msg_id and idx == last_own_msg_index:
+                    seen_text = format_seen_by(msg_id, msg["sender"], st.session_state.username)
+                    if seen_text:
+                        seen_html = f'<div class="seen-by">{seen_text}</div>'
                 
                 # Avatar Selection
                 if is_me:
@@ -530,12 +752,14 @@ with chat_container:
                 else:
                     avatar_html = f'<img src="{avatar_other_src}" class="chat-avatar avatar-other">' if avatar_other_src else f'<div class="chat-avatar avatar-other">{sender_name[0].upper()}</div>'
 
+                # Only show seen_html if it has content
+                seen_div = seen_html if seen_html else ""
                 st.markdown(f'''
                 <div class="chat-row {row_class}">
                     {avatar_html}
                     <div class="chat-message {bubble_class}">
                         <div class="message-sender">{sender_name}</div>
-                        <div class="message-text">{msg["text"]}</div>
+                        <div class="message-text">{msg["text"]}</div>{seen_div}
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)
@@ -545,6 +769,14 @@ with chat_container:
                 row_class = "row-me" if is_me else "row-other"
                 bubble_class = "message-me" if is_me else "message-other"
                 sender_name = "You" if is_me else msg["sender"]
+                msg_id = msg.get("msg_id")
+                
+                # Get seen by info (only show for last own message)
+                seen_html = ""
+                if is_me and msg_id and idx == last_own_msg_index:
+                    seen_text = format_seen_by(msg_id, msg["sender"], st.session_state.username)
+                    if seen_text:
+                        seen_html = f'<div class="seen-by">{seen_text}</div>'
                 
                 # Avatar Selection
                 if is_me:
@@ -557,12 +789,14 @@ with chat_container:
                 if not img_src.startswith("data:image"):
                     img_src = f"data:image/png;base64,{img_src}"
                 
+                # Only show seen_html if it has content
+                seen_div = seen_html if seen_html else ""
                 st.markdown(f'''
                 <div class="chat-row {row_class}">
                     {avatar_html}
                     <div class="chat-message {bubble_class}">
                         <div class="message-sender">{sender_name}</div>
-                        <img src="{img_src}" class="zoomable-image" tabindex="0">
+                        <img src="{img_src}" class="zoomable-image" tabindex="0">{seen_div}
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)

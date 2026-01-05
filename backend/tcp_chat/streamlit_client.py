@@ -77,6 +77,14 @@ class TcpChatClient:
     def send_image(self, base64_data: str):
         self.sock.sendall(f"IMG_SEND {base64_data}\n".encode("utf-8"))
 
+    def request_history(self, limit: int = 50):
+        """Request chat history for current room."""
+        self.sock.sendall(f"HISTORY {limit}\n".encode("utf-8"))
+
+    def mark_seen(self, msg_id: int):
+        """Mark a message as seen by this user."""
+        self.sock.sendall(f"SEEN {msg_id}\n".encode("utf-8"))
+
     def get_new_messages(self) -> List[str]:
         """Drain all messages from queue and return them as a list."""
         lines: List[str] = []
