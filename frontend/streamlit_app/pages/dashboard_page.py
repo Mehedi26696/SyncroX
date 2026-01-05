@@ -56,148 +56,198 @@ except ImportError:
 icon_path = os.path.join(PROJECT_ROOT, "assets", "image.png")
 page_icon = Image.open(icon_path) if os.path.exists(icon_path) else "📊"
 
-st.set_page_config(page_title="Dashboard - SyncroX", page_icon=page_icon, layout="wide")
+st.set_page_config(
+    page_title="Dashboard - SyncroX", 
+    page_icon=page_icon, 
+    layout="wide",
+    
+)
 
-# Apply custom CSS for Raleway font, black background & SyncroX theme
+# Apply custom CSS for Raleway font, new color scheme & SyncroX theme
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
     
     * {
         font-family: 'Raleway', sans-serif !important;
+        font-size: 18px;
     }
     
     .stApp {
-        background-color: #000000;
+        background-color: #ebfbee;
     }
     
     .main {
-        background-color: #000000;
+        background-color: #ebfbee;
         padding-top: 2rem;
     }
     
     [data-testid="stSidebar"] {
-        background-color: #0a0a0a;
-        border-right: 1px solid rgba(3, 192, 132, 0.25);
+        background-color: #d3f9d8;
+        border-right: 2px solid #087f5b;
+    }
+    
+    /* Sidebar text colors */
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] div,
+    [data-testid="stSidebar"] label {
+        color: #000000 !important;
     }
     
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Raleway', sans-serif !important;
-        color: #f9fafb !important;
+        color: #087f5b !important;
     }
+    
+    h1 { font-size: 3rem !important; }
+    h2 { font-size: 2.5rem !important; }
+    h3 { font-size: 2rem !important; }
+    h4 { font-size: 1.5rem !important; }
 
     p, div, span, label {
         font-family: 'Raleway', sans-serif !important;
-        color: #e5e7eb;
+        color: #2b8a3e;
     }
 
     /* Sidebar headings */
     [data-testid="stSidebar"] h3 {
-        color: #03C084 !important;
+        color: #087f5b !important;
         font-weight: 700 !important;
+        font-size: 1.5rem !important;
     }
 
     /* Sidebar info box */
     .stAlert {
-        background-color: #0d0d0d !important;
-        border-left: 4px solid #03C084 !important;
-        color: #e5e7eb !important;
+        background-color: #d3f9d8 !important;
+        border-left: 4px solid #087f5b !important;
+        color: #087f5b !important;
+        font-size: 1.1rem !important;
     }
 
     /* Sidebar navigation buttons */
     [data-testid="stSidebar"] button {
-        background-color: #03C084 !important;
-        color: #020617 !important;
+        background-color: #087f5b !important;
+        color: #000000 !important;
         border-radius: 8px !important;
         border: none !important;
         font-weight: 700 !important;
         margin-bottom: 8px !important;
-        padding: 0.45rem 0.8rem !important;
+        padding: 0.6rem 1rem !important;
+        font-size: 1.3rem !important;
+    }
+    [data-testid="stSidebar"] button p,
+    [data-testid="stSidebar"] button span,
+    [data-testid="stSidebar"] button div,
+    [data-testid="stSidebar"] button * {
+        color: #000000 !important;
+        font-size: 1.2rem !important;
     }
     [data-testid="stSidebar"] button:hover {
-        background-color: #02a673 !important;
-        color: #f9fafb !important;
+        background-color: #006E6D !important;
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] button:hover p,
+    [data-testid="stSidebar"] button:hover span,
+    [data-testid="stSidebar"] button:hover div,
+    [data-testid="stSidebar"] button:hover * {
+        color: #000000 !important;
     }
 
     /* Disabled nav (current page) */
     [data-testid="stSidebar"] button[disabled] {
-        background-color: #064e3b !important;
-        color: #9ca3af !important;
+        background-color: #b2f2bb !important;
+        color: #087f5b !important;
         opacity: 0.9 !important;
+    }
+    [data-testid="stSidebar"] button[disabled] * {
+        color: #087f5b !important;
     }
 
     /* Logout secondary button */
     button[kind="secondary"] {
-        background-color: #111827 !important;
-        color: #e5e7eb !important;
-        border: 1px solid #374151 !important;
+        background-color: #b2f2bb !important;
+        color: #087f5b !important;
+        border: 2px solid #087f5b !important;
+        font-size: 1.1rem !important;
+    }
+    button[kind="secondary"] * {
+        color: #087f5b !important;
     }
     button[kind="secondary"]:hover {
-        border-color: #03C084 !important;
-        background-color: #1f2933 !important;
+        border-color: #006E6D !important;
+        background-color: #d3f9d8 !important;
+    }
+    button[kind="secondary"]:hover * {
+        color: #087f5b !important;
     }
 
     /* Global primary buttons (if any) */
     div.stButton > button {
-        background-color: #03C084 !important;
-        color: #020617 !important;
+        background-color: #087f5b !important;
+        color: #ebfbee !important;
         border-radius: 8px !important;
         border: none !important;
         font-weight: 800 !important;
+        font-size: 1.1rem !important;
+        padding: 0.6rem 1rem !important;
     }
     div.stButton > button:hover {
-        background-color: #02a673 !important;
-        color: #f9fafb !important;
+        background-color: #006E6D !important;
+        color: #ebfbee !important;
     }
 
     /* Expander styling (for error details, metrics, concepts) */
     details {
         border-radius: 10px;
-        border: 1px solid rgba(55, 65, 81, 0.9);
-        background-color: #020617;
+        border: 2px solid #087f5b;
+        background-color: #d3f9d8;
         margin-bottom: 12px;
         transition: all 0.3s ease;
     }
     summary {
-        color: #e5e7eb !important;
+        color: #087f5b !important;
         font-weight: 600;
         padding: 0.75rem;
         cursor: pointer;
+        font-size: 1.6rem !important;
+        border: 1px solid black;
     }
     summary:hover {
-        color: #03C084 !important;
+        color: #006E6D !important;
     }
     details[open] {
-        border-color: #03C084;
-        box-shadow: 0 0 20px rgba(3, 192, 132, 0.25);
+        border-color: #006E6D;
+        box-shadow: 0 0 20px rgba(8, 127, 91, 0.25);
     }
 
     /* Captions / subtle text */
     .stCaption, .stMarkdown small {
-        color: #9ca3af !important;
+        color: #2b8a3e !important;
+        font-size: 1rem !important;
     }
     
     /* Metric cards enhancement */
     [data-testid="stMetricValue"] {
-        font-size: 2rem !important;
+        font-size: 2.8rem !important;
         font-weight: 700 !important;
-        color: #03C084 !important;
+        color: #087f5b !important;
     }
     
     [data-testid="stMetricLabel"] {
-        font-size: 0.875rem !important;
+        font-size: 1.3rem !important;
         font-weight: 500 !important;
-        color: #9ca3af !important;
+        color: #2b8a3e !important;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
     
     /* Server status card */
     .server-card {
-        background: linear-gradient(135deg, #020617 0%, #0a0a0a 100%);
-        border: 1px solid rgba(3, 192, 132, 0.2);
+        background: linear-gradient(135deg, #d3f9d8 0%, #b2f2bb 100%);
+        border: 2px solid #087f5b;
         border-radius: 12px;
-        padding: 1.25rem;
+        padding: 1.5rem;
         margin-bottom: 1rem;
         transition: all 0.3s ease;
     }
@@ -577,7 +627,6 @@ st.markdown("---")
 
 # ---- Networking Concepts Section ----
 st.markdown('<div class="section-header"><h2>🎓 Networking Concepts Demonstrated</h2></div>', unsafe_allow_html=True)
-st.caption("Explore the networking principles and protocols implemented in SyncroX")
 
 with st.expander("📡 Custom TCP Protocols", expanded=False):
     st.markdown("""
@@ -660,13 +709,3 @@ with st.expander("🔒 Reliability & Security", expanded=True):
     """)
 
 st.markdown("---")
-st.markdown("""
-<div style="text-align: center; padding: 2rem 0 1rem 0;">
-    <p style="color: #9ca3af; font-size: 0.875rem;">
-        💡 This dashboard provides real-time monitoring of all TCP services and detailed performance analytics
-    </p>
-    <p style="color: #6b7280; font-size: 0.75rem; margin-top: 0.5rem;">
-        SyncroX • Advanced Networking Laboratory Platform
-    </p>
-</div>
-""", unsafe_allow_html=True)

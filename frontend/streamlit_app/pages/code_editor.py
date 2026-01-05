@@ -29,7 +29,7 @@ page_icon = Image.open(icon_path) if os.path.exists(icon_path) else "🤝"
 st.set_page_config(
     page_title="Collab - SyncroX",
     page_icon=page_icon,
-    layout="wide",
+    layout="wide"
 )
 
 # ------------------ THEME / CSS ------------------
@@ -40,93 +40,124 @@ st.markdown(
 
     * {
         font-family: 'Raleway', sans-serif !important;
+        font-size: 18px;
     }
 
     .stApp {
-        background-color: #000000;
+        background-color: #ebfbee;
     }
 
     .main {
-        background-color: #000000;
+        background-color: #ebfbee;
     }
 
     [data-testid="stSidebar"] {
-        background-color: #0a0a0a;
-        border-right: 1px solid rgba(3, 192, 132, 0.25);
+        background-color: #d3f9d8;
+        border-right: 2px solid #087f5b;
+    }
+
+    /* Sidebar text colors (match main page) */
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] div,
+    [data-testid="stSidebar"] label {
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] .stMarkdown {
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stNotificationContentInfo"] {
+        color: #000000 !important;
     }
 
     h1, h2, h3, h4, h5, h6 {
-        color: #f9fafb !important;
+        color: #087f5b !important;
     }
+    
+    h1 { font-size: 3rem !important; }
+    h2 { font-size: 2.5rem !important; }
+    h3 { font-size: 2rem !important; }
+    h4 { font-size: 1.5rem !important; }
 
     p, div, span, label {
-        color: #e5e7eb;
+        color: #2b8a3e;
     }
 
     /* Sidebar headings */
     [data-testid="stSidebar"] h3 {
-        color: #03C084 !important;
+        color: #087f5b !important;
         font-weight: 700 !important;
+        font-size: 1.5rem !important;
     }
 
     /* Sidebar info box */
     .stAlert {
-        background-color: #0d0d0d !important;
-        border-left: 4px solid #03C084 !important;
-        color: #e5e7eb !important;
+        background-color: #d3f9d8 !important;
+        border-left: 4px solid #087f5b !important;
+        color: #087f5b !important;
+        font-size: 1.1rem !important;
     }
 
     /* Sidebar navigation buttons */
     [data-testid="stSidebar"] button {
-        background-color: #03C084 !important;
-        color: #020617 !important;
+        background-color: #087f5b !important;
+        color: #ebfbee !important;
         border-radius: 8px !important;
         border: none !important;
         font-weight: 700 !important;
         margin-bottom: 8px !important;
-        padding: 0.45rem 0.8rem !important;
+        padding: 0.6rem 1rem !important;
+        font-size: 1.1rem !important;
     }
     [data-testid="stSidebar"] button:hover {
-        background-color: #02a673 !important;
-        color: #f9fafb !important;
+        background-color: #006E6D !important;
+        color: #ebfbee !important;
     }
     [data-testid="stSidebar"] button[disabled] {
-        background-color: #064e3b !important;
-        color: #9ca3af !important;
+        background-color: #b2f2bb !important;
+        color: #087f5b !important;
         opacity: 0.9 !important;
     }
 
     /* Generic buttons in main area */
     div.stButton > button {
-        background-color: #03C084 !important;
-        color: #020617 !important;
+        background-color: #087f5b !important;
+        color: #ebfbee !important;
         border-radius: 8px !important;
         border: none !important;
         font-weight: 800 !important;
-        padding: 0.4rem 0.8rem !important;
+        padding: 0.6rem 1rem !important;
+        font-size: 1.1rem !important;
+    }
+    div.stButton > button * {
+        color: #ebfbee !important;
     }
     div.stButton > button:hover {
-        background-color: #02a673 !important;
-        color: #f9fafb !important;
+        background-color: #006E6D !important;
+        color: #ebfbee !important;
+    }
+    div.stButton > button:hover * {
+        color: #ebfbee !important;
     }
 
     /* Textareas (editor, stdin, output) */
     .stTextArea textarea {
-        background-color: #020617 !important;
-        color: #e5e7eb !important;
+        background-color: white !important;
+        color: #087f5b !important;
         border-radius: 12px !important;
-        border: 1px solid #1f2933 !important;
+        border: 2px solid #087f5b !important;
         font-family: "JetBrains Mono", "Fira Code", "Source Code Pro", monospace !important;
-        font-size: 0.9rem !important;
+        font-size: 1rem !important;
     }
     .stTextArea textarea:focus {
-        border-color: #03C084 !important;
-        box-shadow: 0 0 0 1px #03C084 !important;
+        border-color: #006E6D !important;
+        box-shadow: 0 0 0 2px #006E6D !important;
         outline: none !important;
     }
 
     .stCaption, .stMarkdown small {
-        color: #9ca3af !important;
+        color: #2b8a3e !important;
+        font-size: 1rem !important;
     }
 </style>
 """,
@@ -633,7 +664,4 @@ st.text_area(
 )
 
 st.markdown("---")
-st.caption(
-    "💡 **Live editing enabled**: Your changes auto-save every 2 seconds. Others' edits appear automatically every second. "
-    "Code execution uses a separate TCP exec server with Docker sandboxing (Python, C, C++, Java)."
-)
+

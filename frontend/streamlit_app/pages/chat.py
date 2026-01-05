@@ -25,105 +25,139 @@ import io
 icon_path = os.path.join(PROJECT_ROOT, "assets", "image.png")
 page_icon = Image.open(icon_path) if os.path.exists(icon_path) else "💬"
 
-st.set_page_config(page_title="Chat - SyncroX", page_icon=page_icon, layout="wide")
+st.set_page_config(
+    page_title="Chat - SyncroX",
+    page_icon=page_icon,
+    layout="wide",
+   
+)
 
-# Apply custom CSS for Raleway font and black background + SyncroX theme
+# Apply custom CSS for Raleway font and new color scheme + SyncroX theme
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
     
     * {
         font-family: 'Raleway', sans-serif !important;
+        font-size: 18px;
     }
     
     .stApp {
-        background-color: #000000;
+        background-color: #ebfbee;
     }
     
     .main {
-        background-color: #000000;
+        background-color: #ebfbee;
+        max-width: 1200px;
+        margin: 0 auto;
     }
     
     [data-testid="stSidebar"] {
-        background-color: #0a0a0a;
-        border-right: 1px solid rgba(3, 192, 132, 0.25);
+        background-color: #d3f9d8;
+        border-right: 2px solid #087f5b;
+    }
+
+    /* Sidebar text colors (match main page) */
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] div,
+    [data-testid="stSidebar"] label {
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] .stMarkdown {
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stNotificationContentInfo"] {
+        color: #000000 !important;
     }
     
     h1, h2, h3, h4, h5, h6, p, div, span, label, button {
         font-family: 'Raleway', sans-serif !important;
-        color: #f9fafb;
+        color: #087f5b;
     }
+    
+    h1 { font-size: 3rem !important; }
+    h2 { font-size: 2.5rem !important; }
+    h3 { font-size: 2rem !important; }
+    h4 { font-size: 1.5rem !important; }
 
     /* Sidebar headings */
     [data-testid="stSidebar"] h3 {
-        color: #03C084 !important;
+        color: #087f5b !important;
         font-weight: 700 !important;
+        font-size: 1.5rem !important;
     }
 
     /* Sidebar info box */
     .stAlert {
-        background-color: #0d0d0d !important;
-        border-left: 4px solid #03C084 !important;
-        color: #e5e7eb !important;
+        background-color: #d3f9d8 !important;
+        border-left: 4px solid #087f5b !important;
+        color: #087f5b !important;
+        font-size: 1.1rem !important;
     }
 
     /* Global buttons (SyncroX green) */
     div.stButton > button {
-        background-color: #03C084 !important;
-        color: #020617 !important;
+        background-color: #087f5b !important;
+        color: #ebfbee !important;
         border-radius: 8px !important;
         border: none !important;
         font-weight: 800 !important;
-        padding: 0.4rem 0.8rem !important;
+        padding: 0.6rem 1rem !important;
+        font-size: 1.1rem !important;
     }
     div.stButton > button:hover {
-        background-color: #02a673 !important;
-        color: #f9fafb !important;
+        background-color: #006E6D !important;
+        color: #ebfbee !important;
     }
 
     /* Sidebar-specific buttons */
     [data-testid="stSidebar"] button {
-        background-color: #03C084 !important;
-        color: #020617 !important;
+        background-color: #087f5b !important;
+        color: #ebfbee !important;
         border-radius: 8px !important;
         border: none !important;
         font-weight: 700 !important;
         margin-bottom: 8px !important;
+        font-size: 1.1rem !important;
+        padding: 0.6rem 1rem !important;
     }
     [data-testid="stSidebar"] button:hover {
-        background-color: #02a673 !important;
-        color: #f9fafb !important;
+        background-color: #006E6D !important;
+        color: #ebfbee !important;
     }
 
     /* Disabled nav button (current page) */
     [data-testid="stSidebar"] button[disabled] {
-        background-color: #064e3b !important;
-        color: #9ca3af !important;
+        background-color: #b2f2bb !important;
+        color: #087f5b !important;
         opacity: 0.9 !important;
     }
 
     /* Logout secondary button */
     button[kind="secondary"] {
-        background-color: #111827 !important;
-        color: #e5e7eb !important;
-        border: 1px solid #374151 !important;
+        background-color: #b2f2bb !important;
+        color: #087f5b !important;
+        border: 2px solid #087f5b !important;
+        font-size: 1.1rem !important;
     }
     button[kind="secondary"]:hover {
-        border-color: #03C084 !important;
-        background-color: #1f2933 !important;
+        border-color: #006E6D !important;
+        background-color: #d3f9d8 !important;
     }
 
     /* Text input styling (chat box) */
     .stTextInput>div>div>input {
-        background-color: #020617 !important;
-        color: #e5e7eb !important;
+        background-color: white !important;
+        color: #087f5b !important;
         border-radius: 999px !important;
-        border: 1px solid #1f2933 !important;
-        padding: 0.4rem 0.9rem !important;
+        border: 2px solid #087f5b !important;
+        padding: 0.6rem 1.1rem !important;
+        font-size: 1.1rem !important;
     }
     .stTextInput>div>div>input:focus {
-        border-color: #03C084 !important;
-        box-shadow: 0 0 0 1px #03C084 !important;
+        border-color: #006E6D !important;
+        box-shadow: 0 0 0 2px #006E6D !important;
         outline: none !important;
     }
 
@@ -269,8 +303,11 @@ if st.session_state.chat_current_user != st.session_state.username or st.session
     st.session_state.chat_seen_by = {}
     st.session_state.chat_pending_seen = set()
 
-st.header("Real-time Chat")
-st.caption(f"Room: `{st.session_state.current_room}` • User: `{st.session_state.username}`")
+st.markdown("<h2 style='color: #087f5b; margin-bottom: 0.5rem;'>💬 Real-time Chat</h2>", unsafe_allow_html=True)
+st.markdown(
+    f"<p style='color: #6b7280; font-size: 0.9rem; margin-bottom: 1.5rem;'>Room: <strong>{st.session_state.current_room}</strong> • User: <strong>{st.session_state.username}</strong></p>",
+    unsafe_allow_html=True,
+)
 
 client = st.session_state.chat_client
 
@@ -467,98 +504,103 @@ for line in new_lines:
     else:
         st.session_state.chat_log.append({"type": "system", "text": line})
 
-# ---------- Chat interface ----------
-st.markdown("### Messages")
 
-# Custom CSS for chat bubbles (Messenger/SyncroX hybrid)
+
+# Custom CSS for chat bubbles (WhatsApp/Modern messaging style)
 st.markdown("""
 <style>
-.chat-message {
-    padding: 10px 14px;
-    border-radius: 18px;
-    margin: 4px 0;
-    max-width: 70%;
-    word-wrap: break-word;
-    font-family: 'Raleway', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 0.92rem;
-    line-height: 1.4;
-    background-color: #111827;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+/* Modern chat container with shadow */
+.stContainer {
+    background: white;
+    border-radius: 16px;
+    padding: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
-/* Me (right side – SyncroX green bubble) */
+.chat-message {
+    padding: 12px 16px;
+    border-radius: 16px;
+    margin: 6px 0;
+    max-width: 65%;
+    word-wrap: break-word;
+    font-family: 'Raleway', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 1rem;
+    line-height: 1.5;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    position: relative;
+}
+
+/* Me (right side – Primary green bubble) */
 .message-me {
     margin-left: auto;
     text-align: left;
-    background: linear-gradient(135deg, #03C084 0%, #02a673 100%);
-    color: #020617;
-    border-bottom-right-radius: 6px;
+    background: #087f5b;
+    color: white;
+    border-bottom-right-radius: 4px;
 }
 
-/* Others (left side – dark bubble) */
+/* Others (left side – Light gray bubble like WhatsApp) */
 .message-other {
     margin-right: auto;
     text-align: left;
-    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-    color: #e5e7eb;
-    border: 1px solid rgba(55, 65, 81, 0.5);
-    border-bottom-left-radius: 6px;
+    background: #ffffff;
+    color: #1f2937;
+    border: 1px solid #e5e7eb;
+    border-bottom-left-radius: 4px;
 }
 
 /* Sender label */
 .message-sender {
     font-size: 0.75rem;
     font-weight: 700;
-    opacity: 0.75;
-    margin-bottom: 3px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    letter-spacing: 0.3px;
 }
 
 .message-me .message-sender {
-    color: #064e3b;
+    color: #d3f9d8;
 }
 
 .message-other .message-sender {
-    color: #9ca3af;
+    color: #087f5b;
 }
 
 /* Message text */
 .message-text {
-    font-size: 0.92rem;
+    font-size: 1rem;
     line-height: 1.5;
     color: inherit;
 }
 
 /* Seen by indicator */
 .seen-by {
-    font-size: 0.65rem;
-    color: #6b7280;
-    margin-top: 4px;
-    opacity: 0.8;
+    font-size: 0.7rem;
+    color: #d3f9d8;
+    margin-top: 6px;
+    opacity: 0.9;
 }
 
 .message-me .seen-by {
-    color: #064e3b;
+    color: #d3f9d8;
     text-align: right;
 }
 
 .message-other .seen-by {
-    color: #9ca3af;
+    color: #6b7280;
 }
 
 /* System messages (centered, subtle) */
 .system-message {
     text-align: center;
     color: #6b7280;
-    font-size: 0.75rem;
-    margin: 12px 0;
-    font-style: italic;
-    padding: 6px 12px;
-    background: rgba(31, 41, 55, 0.5);
+    font-size: 0.8rem;
+    margin: 16px auto;
+    font-weight: 500;
+    padding: 8px 16px;
+    background: #f3f4f6;
     border-radius: 12px;
     display: inline-block;
-    width: 100%;
+    max-width: 80%;
 }
 
 /* Image styling with CSS-only Lightbox (Focus to zoom) */
@@ -586,22 +628,22 @@ st.markdown("""
     border-radius: 4px;
 }
 
-/* Custom styling for Expanders to look like big buttons */
+/* Custom styling for Expanders to look like modern action buttons */
 div[data-testid="stExpander"] details summary {
-    background-color: #111827 !important;
-    border: 1px solid #374151 !important;
-    border-radius: 8px !important;
+    background-color: #f3f4f6 !important;
+    border: 2px solid #d1d5db !important;
+    border-radius: 12px !important;
     padding: 1rem !important;
-    font-size: 1.1rem !important;
+    font-size: 1rem !important;
     font-weight: 600 !important;
-    color: #e5e7eb !important;
+    color: #087f5b !important;
     transition: all 0.2s ease;
 }
 
 div[data-testid="stExpander"] details summary:hover {
-    border-color: #03C084 !important;
-    background-color: #1f2933 !important;
-    color: #03C084 !important;
+    border-color: #087f5b !important;
+    background-color: #d3f9d8 !important;
+    color: #006E6D !important;
 }
 
 div[data-testid="stExpander"] {
@@ -613,8 +655,8 @@ div[data-testid="stExpander"] {
 .chat-row {
     display: flex;
     align-items: flex-end;
-    margin: 8px 0;
-    gap: 8px;
+    margin: 10px 0;
+    gap: 10px;
 }
 
 .row-me {
@@ -626,29 +668,30 @@ div[data-testid="stExpander"] {
 }
 
 .chat-avatar {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background-color: #374151;
-    color: #e5e7eb;
+    background-color: #087f5b;
+    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-weight: 700;
     flex-shrink: 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 4px rgba(8, 127, 91, 0.2);
 }
 
 .avatar-me {
-    background-color: #03C084;
-    color: #020617;
+    background-color: #087f5b;
+    color: white;
     order: 2; /* Avatar after message for Me */
 }
 
 .avatar-other {
-    background-color: #1f2933;
-    border: 1px solid #374151;
+    background-color: #f3f4f6;
+    border: 2px solid #087f5b;
+    color: #087f5b;
     /* order: 1; REMOVED to let it default to 0 (before message) */
 }
 
@@ -660,8 +703,8 @@ div[data-testid="stExpander"] {
 /* Remove background for image avatars */
 img.chat-avatar {
     background-color: transparent !important;
-    box-shadow: none !important;
-    border: none !important;
+    box-shadow: 0 2px 4px rgba(8, 127, 91, 0.15) !important;
+    border: 2px solid #087f5b !important;
 }
 </style>
 """, unsafe_allow_html=True)

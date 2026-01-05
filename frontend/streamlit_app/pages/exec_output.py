@@ -24,132 +24,147 @@ from backend.exec_history import get_history_manager
 icon_path = os.path.join(PROJECT_ROOT, "assets", "image.png")
 page_icon = Image.open(icon_path) if os.path.exists(icon_path) else "📜"
 
-st.set_page_config(page_title="Execution Output - SyncroX", page_icon=page_icon, layout="wide")
+st.set_page_config(
+    page_title="Execution Output - SyncroX",
+    page_icon=page_icon,
+    layout="wide",
+   
+)
 
 # Basic styling (SyncroX theme)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
-    
+
     * {
         font-family: 'Raleway', sans-serif !important;
+        font-size: 18px;
     }
 
     .stApp {
-        background-color: #000000;
+        background-color: #ebfbee;
     }
 
     .main {
-        background-color: #000000;
+        background-color: #ebfbee;
     }
 
-    body {
-        background-color: #020617;
-        color: #e5e7eb;
+    [data-testid="stSidebar"] {
+        background-color: #d3f9d8;
+        border-right: 2px solid #087f5b;
     }
 
-    .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
+    /* Sidebar text colors (match main page) */
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] div,
+    [data-testid="stSidebar"] label {
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] .stMarkdown {
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stNotificationContentInfo"] {
+        color: #000000 !important;
     }
 
     h1, h2, h3, h4, h5, h6 {
-        color: #f9fafb !important;
+        color: #087f5b !important;
+    }
+    
+    h1 { font-size: 3rem !important; }
+    h2 { font-size: 2.5rem !important; }
+    h3 { font-size: 2rem !important; }
+    h4 { font-size: 1.5rem !important; }
+
+    p, div, span, label {
+        color: #2b8a3e;
     }
 
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background-color: #0a0a0a;
-        border-right: 1px solid rgba(3, 192, 132, 0.25);
-    }
-
+    /* Sidebar headings */
     [data-testid="stSidebar"] h3 {
-        color: #03C084 !important;
+        color: #087f5b !important;
         font-weight: 700 !important;
+        font-size: 1.5rem !important;
     }
 
+    /* Sidebar info box */
     .stAlert {
-        background-color: #0d0d0d !important;
-        border-left: 4px solid #03C084 !important;
-        color: #e5e7eb !important;
+        background-color: #d3f9d8 !important;
+        border-left: 4px solid #087f5b !important;
+        color: #087f5b !important;
+        font-size: 1.1rem !important;
     }
 
+    /* Sidebar navigation buttons */
     [data-testid="stSidebar"] button {
-        background-color: #03C084 !important;
-        color: #020617 !important;
+        background-color: #087f5b !important;
+        color: #000000 !important;
         border-radius: 8px !important;
         border: none !important;
         font-weight: 700 !important;
         margin-bottom: 8px !important;
+        padding: 0.6rem 1rem !important;
+        font-size: 1.1rem !important;
+    }
+    [data-testid="stSidebar"] button p,
+    [data-testid="stSidebar"] button span,
+    [data-testid="stSidebar"] button div,
+    [data-testid="stSidebar"] button * {
+        color: #000000 !important;
     }
     [data-testid="stSidebar"] button:hover {
-        background-color: #02a673 !important;
-        color: #f9fafb !important;
+        background-color: #006E6D !important;
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] button:hover * {
+        color: #000000 !important;
     }
     [data-testid="stSidebar"] button[disabled] {
-        background-color: #064e3b !important;
-        color: #9ca3af !important;
+        background-color: #b2f2bb !important;
+        color: #087f5b !important;
         opacity: 0.9 !important;
     }
 
-    /* Logout secondary button */
-    button[kind="secondary"] {
-        background-color: #111827 !important;
-        color: #e5e7eb !important;
-        border: 1px solid #374151 !important;
-    }
-    button[kind="secondary"]:hover {
-        border-color: #03C084 !important;
-        background-color: #1f2933 !important;
-    }
-
-    /* Metric-style boxes (if you want custom containers) */
-    .metric-box {
-        border-radius: 12px;
-        padding: 0.75rem 1rem;
-        background: linear-gradient(135deg, #020617, #0f172a);
-        border: 1px solid rgba(3, 192, 132, 0.4);
-    }
-
-    /* Default st.metric card tweak */
-    .stMetric {
-        background-color: #0b0b0b !important;
-        padding: 16px !important;
-        border-radius: 12px !important;
-        border: 1px solid rgba(3, 192, 132, 0.35) !important;
-        box-shadow: 0 0 12px rgba(3, 192, 132, 0.25);
-    }
-
-    /* Dataframe and text areas minor tweaks */
-    .stDataFrame {
-        border-radius: 12px !important;
-        overflow: hidden !important;
-    }
-
-    textarea {
-        background-color: #020617 !important;
-        color: #e5e7eb !important;
-        border-radius: 10px !important;
-        border: 1px solid #1f2933 !important;
-    }
-    
-    /* Expander styling */
-    .streamlit-expanderHeader {
-        background-color: #0a0a0a !important;
+    /* Generic buttons in main area */
+    div.stButton > button {
+        background-color: #087f5b !important;
+        color: #ebfbee !important;
         border-radius: 8px !important;
+        border: none !important;
+        font-weight: 800 !important;
+        padding: 0.6rem 1rem !important;
+        font-size: 1.1rem !important;
     }
-    
-    /* Tab styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
+    div.stButton > button * {
+        color: #ebfbee !important;
     }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #111827;
-        border-radius: 8px;
-        padding: 8px 16px;
+    div.stButton > button:hover {
+        background-color: #006E6D !important;
+        color: #ebfbee !important;
     }
-    .stTabs [aria-selected="true"] {
-        background-color: #03C084 !important;
+    div.stButton > button:hover * {
+        color: #ebfbee !important;
+    }
+
+    /* Textareas (editor, stdin, output) */
+    .stTextArea textarea {
+        background-color: white !important;
+        color: #087f5b !important;
+        border-radius: 12px !important;
+        border: 2px solid #087f5b !important;
+        font-family: "JetBrains Mono", "Fira Code", "Source Code Pro", monospace !important;
+        font-size: 1rem !important;
+    }
+    .stTextArea textarea:focus {
+        border-color: #006E6D !important;
+        box-shadow: 0 0 0 2px #006E6D !important;
+        outline: none !important;
+    }
+
+    .stCaption, .stMarkdown small {
+        color: #2b8a3e !important;
+        font-size: 1rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -161,46 +176,43 @@ if not st.session_state.get("is_logged_in", False):
         st.switch_page("app.py")
     st.stop()
 
-# ============================================================================
-# Sidebar - navigation
-# ============================================================================
+# Sidebar - User info and navigation
 with st.sidebar:
     st.markdown("### 👤 User Information")
     st.info(f"**Name:** {st.session_state.username}\n\n**Room:** `{st.session_state.current_room}`")
-
+    
     st.markdown("---")
+    
     st.markdown("### 🧭 Navigation")
     st.caption("Select a feature below:")
-
+    
+    # Navigation buttons
     if st.button("💬 Chat", use_container_width=True):
         st.switch_page("pages/chat.py")
-
+    
     if st.button("🤝 Code Editor", use_container_width=True):
         st.switch_page("pages/code_editor.py")
-
+    
     if st.button("📁 File Manager", use_container_width=True):
         st.switch_page("pages/file_manager.py")
-
+    
     if st.button("📊 Dashboard", use_container_width=True):
         st.switch_page("pages/dashboard_page.py")
-
-    # Current page (disabled)
+    
     if st.button("📜 Execution Output", use_container_width=True, disabled=True):
         st.switch_page("pages/exec_output.py")
-
+    
     st.markdown("---")
+    
+    # Logout button
     if st.button("🚪 Leave Room & Logout", use_container_width=True, type="secondary"):
         st.session_state.is_logged_in = False
         st.session_state.username = ""
         st.session_state.current_room = ""
         # Clear all client connections
         for key in list(st.session_state.keys()):
-            if key.endswith("_client"):
-                try:
-                    st.session_state[key].close()
-                except Exception:
-                    pass
-                del st.session_state[key]
+            if key.endswith('_client'):
+                st.session_state.pop(key)
         st.switch_page("app.py")
 
 # ============================================================================

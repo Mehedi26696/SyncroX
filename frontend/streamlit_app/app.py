@@ -19,43 +19,95 @@ st.set_page_config(
     page_title="SyncroX", 
     page_icon="/assets/logo.png", 
     layout="wide",
-    initial_sidebar_state="collapsed"
+    
 )
 
-# Apply custom CSS for Raleway font and black background
+# Apply custom CSS for Raleway font and new color scheme
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
     
     * {
         font-family: 'Raleway', sans-serif !important;
+        font-size: 18px;
     }
     
     .stApp {
-        background-color: #000000;
+        background-color: #ebfbee;
     }
     
     .main {
-        background-color: #000000;
+        background-color: #ebfbee;
     }
     
     [data-testid="stSidebar"] {
-        background-color: #0a0a0a;
+        background-color: #d3f9d8;
+    }
+    
+    /* Sidebar text colors */
+    [data-testid="stSidebar"] h3 {
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] div,
+    [data-testid="stSidebar"] label {
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] .stMarkdown {
+        color: #000000 !important;
+    }
+    
+    /* Sidebar info/alert box text */
+    [data-testid="stSidebar"] [data-testid="stNotificationContentInfo"] {
+        color: #000000 !important;
     }
     
     h1, h2, h3, h4, h5, h6, p, div, span, label, button {
         font-family: 'Raleway', sans-serif !important;
     }
+    
+    h1 { font-size: 3rem !important; }
+    h2 { font-size: 2.5rem !important; }
+    h3 { font-size: 2rem !important; }
+    h4 { font-size: 1.5rem !important; }
+    
+    /* Tab labels styling */
+    .stTabs [data-baseweb="tab-list"] button {
+        color: #6b7280 !important;
+        font-size: 2rem !important;
+        font-weight: 600 !important;
+        border: 2px solid #6b7280 !important;
+        border-radius: 8px !important;
+        margin-right: 8px !important;
+        padding: 0.5rem 1rem !important;
+    }
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+        color: #087f5b !important;
+        border-color: #087f5b !important;
+        background-color: rgba(8, 127, 91, 0.1) !important;
+    }
+    
+    /* Remove tab underline indicator */
+    .stTabs [data-baseweb="tab-highlight"] {
+        display: none !important;
+    }
+    .stTabs [data-baseweb="tab-border"] {
+        display: none !important;
+    }
+    
     div.stButton > button {
-        background-color: #03C084 !important;
-        color: black !important;
+        background-color: #087f5b !important;
+        color: #ebfbee !important;
         border-radius: 8px;
         border: none;
         font-weight: 800 !important;
+        font-size: 1.3rem !important;
+        padding: 0.6rem 1rem !important;
     }
     div.stButton > button:hover {
-        background-color: #218838 !important;
-        color: white !important;
+        background-color: #006E6D !important;
+        color: #ebfbee !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -74,13 +126,13 @@ def render_footer():
     st.markdown(
         """
         <hr style="border: 0; border-top: 1px solid #1f2933; margin-top: 3rem; margin-bottom: 0.75rem;" />
-        <div style="text-align: center; font-size: 1rem; color: #9ca3af;">
+        <div style="text-align: center; font-size: 1.2rem; color: #2b8a3e;">
             Built  by
-            <a href="https://github.com/Abs-Futy7" target="_blank" style="color:#03C084; text-decoration:none;">
+            <a href="https://github.com/Abs-Futy7" target="_blank" style="color:#087f5b; text-decoration:none; font-weight: 600;">
                 MD. Abu Bakar Siddique (@Abs-Futy7)
             </a>
             &nbsp;and&nbsp;
-            <a href="https://github.com/Mehedi26696" target="_blank" style="color:#03C084; text-decoration:none;">
+            <a href="https://github.com/Mehedi26696" target="_blank" style="color:#087f5b; text-decoration:none; font-weight: 600;">
                 H. M. Mehedi Hasan (@Mehedi26696)
             </a>
         </div>
@@ -116,13 +168,13 @@ def render_welcome_page():
             logo = Image.open(logo_path)
             st.image(logo, use_column_width=True)
         
-        st.markdown("<h2 style='text-align: center; font-family: Raleway ; font-weight: 400; font-color: white;'>Collaborative Platform for Real-time Chat, Code Editing & File Sharing</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; font-family: Raleway ; font-weight: 400; color: #087f5b;'>Collaborative Platform for Real-time Chat, Code Editing & File Sharing</h2>", unsafe_allow_html=True)
 
         
         st.markdown("<br>", unsafe_allow_html=True)
         
         # Username input
-        st.markdown("### Enter Your Name")
+        st.markdown("<h3 style='color: #6b7280;'>Enter Your Name</h3>", unsafe_allow_html=True)
         username = st.text_input(
             "Username",
             placeholder="Enter your name...",
@@ -133,7 +185,7 @@ def render_welcome_page():
         st.markdown("<br>", unsafe_allow_html=True)
         
         # Room selection
-        st.markdown("### Room Management")
+        st.markdown("<h3 style='color: #6b7280;'>Room Management</h3>", unsafe_allow_html=True)
         
         tab1, tab2 = st.tabs(["📝 Create New Room", "🔑 Join Existing Room"])
         
@@ -176,28 +228,28 @@ def render_welcome_page():
         st.markdown("<br><br>", unsafe_allow_html=True)
         
         # --- Features section (boxed layout) ---
-        st.markdown("<h3 style='text-align:center; color:white;'>What can you do with SyncroX?</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align:center; color:#087f5b; font-size: 2.2rem;'>What can you do with SyncroX?</h3>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
 
         # Custom CSS for feature boxes
         st.markdown("""
         <style>
         .feature-box {
-            border: 1.5px solid #03C084;
+            border: 2px solid #087f5b;
             border-radius: 12px;
-            padding: 18px;
+            padding: 22px;
             margin-bottom: 20px;
-            background: #0a0a0a;
-            box-shadow: 0 0 10px rgba(3, 192, 132, 0.15);
+            background: #d3f9d8;
+            box-shadow: 0 0 10px rgba(8, 127, 91, 0.15);
             transition: 0.2s ease-in-out;
         }
         .feature-box:hover {
-            box-shadow: 0 0 20px rgba(3, 192, 132, 0.35);
+            box-shadow: 0 0 20px rgba(8, 127, 91, 0.35);
             transform: translateY(-3px);
         }
         .feature-title {
-            color: gray;
-            font-size: 28px;
+            color: #087f5b;
+            font-size: 32px;
             font-weight: 600;
         }
         </style>
@@ -209,14 +261,14 @@ def render_welcome_page():
             st.markdown("""
             <div class="feature-box">
                 <div class="feature-title">Real-time Chat</div>
-                <span style="color:#d0d0d0;">Instant messaging with room-based conversations</span>
+                <span style="color:#2b8a3e; font-size: 1.1rem;">Instant messaging with room-based conversations</span>
             </div>
             """, unsafe_allow_html=True)
 
             st.markdown("""
             <div class="feature-box">
                 <div class="feature-title">File Transfer</div>
-                <span style="color:#d0d0d0;">Secure file sharing within your room</span>
+                <span style="color:#2b8a3e; font-size: 1.1rem;">Secure file sharing within your room</span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -224,14 +276,14 @@ def render_welcome_page():
             st.markdown("""
             <div class="feature-box">
                 <div class="feature-title">Collaborative Code Editor</div>
-                <span style="color:#d0d0d0;">Live code editing with execution support</span>
+                <span style="color:#2b8a3e; font-size: 1.1rem;">Live code editing with execution support</span>
             </div>
             """, unsafe_allow_html=True)
 
             st.markdown("""
             <div class="feature-box">
                 <div class="feature-title">Dashboard</div>
-                <span style="color:#d0d0d0;">Monitor connections and system status</span>
+                <span style="color:#2b8a3e; font-size: 1.1rem;">Monitor connections and system status</span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -247,78 +299,106 @@ def render_main_app():
     <style>
     /* Sidebar headings */
     [data-testid="stSidebar"] h3 {
-        color: #03C084 !important;
+        color: #087f5b !important;
         font-weight: 700 !important;
+        font-size: 1.5rem !important;
     }
 
     /* Sidebar info box */
     .stAlert {
-        background-color: #0d0d0d !important;
-        border-left: 4px solid #03C084 !important;
-        color: white !important;
+        background-color: #d3f9d8 !important;
+        border-left: 4px solid #087f5b !important;
+        color: #087f5b !important;
+        font-size: 1.1rem !important;
     }
 
     /* Sidebar nav buttons override (stronger than global) */
     [data-testid="stSidebar"] button {
-        background-color: #03C084 !important;
-        color: black !important;
+        background-color: #087f5b !important;
+        color: #ebfbee !important;
         border-radius: 8px !important;
         font-weight: 700 !important;
         margin-bottom: 8px !important;
         border: none !important;
+        font-size: 1.1rem !important;
+        padding: 0.6rem 1rem !important;
     }
     [data-testid="stSidebar"] button:hover {
-        background-color: #02a673 !important;
-        color: white !important;
+        background-color: #006E6D !important;
+        color: #ebfbee !important;
     }
 
     /* Logout secondary button */
     button[kind="secondary"] {
-        background-color: #111 !important;
-        color: white !important;
-        border: 1px solid #444 !important;
+        background-color: #b2f2bb !important;
+        color: #087f5b !important;
+        border: 2px solid #087f5b !important;
+        font-size: 1.1rem !important;
     }
     button[kind="secondary"]:hover {
-        border-color: #03C084 !important;
-        background-color: #1a1a1a !important;
+        border-color: #006E6D !important;
+        background-color: #d3f9d8 !important;
     }
 
     /* Feature card styling */
     .feature-card {
-        border: 1.5px solid #03C08433;
+        border: 2px solid #087f5b;
         border-radius: 14px;
-        padding: 20px;
-        background-color: #0b0b0b;
-        box-shadow: 0 0 10px rgba(3, 192, 132, 0.15);
+        padding: 24px;
+        background-color: #d3f9d8;
+        box-shadow: 0 0 10px rgba(8, 127, 91, 0.15);
         transition: 0.25s;
-        height: 180px;
+        height: 200px;
     }
     .feature-card:hover {
-        border-color: #03C084;
-        box-shadow: 0 0 22px rgba(3, 192, 132, 0.45);
+        border-color: #006E6D;
+        box-shadow: 0 0 22px rgba(8, 127, 91, 0.45);
         transform: translateY(-4px);
     }
     .feature-card h4 {
-        color: #03C084 !important;
+        color: #087f5b !important;
         font-weight: 700 !important;
-        margin-bottom: 8px !important;
+        margin-bottom: 10px !important;
+        font-size: 1.5rem !important;
     }
     .feature-card p {
-        color: #cfcfcf !important;
-        font-size: 14px !important;
+        color: #2b8a3e !important;
+        font-size: 1.1rem !important;
     }
 
     /* Metric cards (Room Activity) */
     .stMetric {
-        background-color: #0b0b0b !important;
-        padding: 18px !important;
+        background-color: #d3f9d8 !important;
+        padding: 20px !important;
         border-radius: 14px !important;
-        border: 1.5px solid #03C08433 !important;
-        box-shadow: 0px 0px 12px rgba(3, 192, 132, 0.2);
+        border: 2px solid #087f5b !important;
+        box-shadow: 0px 0px 12px rgba(8, 127, 91, 0.2);
     }
     .stMetric:hover {
-        border-color: #03C084 !important;
-        box-shadow: 0px 0px 20px rgba(3, 192, 132, 0.35);
+        border-color: #006E6D !important;
+        box-shadow: 0px 0px 20px rgba(8, 127, 91, 0.35);
+    }
+    .stMetric label {
+        color: #374151 !important;
+        font-size: 1.2rem !important;
+        font-weight: 600 !important;
+    }
+    .stMetric [data-testid="stMetricValue"] {
+        color: #1f2937 !important;
+        font-size: 2.2rem !important;
+        font-weight: 700 !important;
+    }
+    .stMetric div {
+        color: #1f2937 !important;
+    }
+    .stMetric [data-testid="stMetricValue"] > div {
+        color: #1f2937 !important;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #374151 !important;
+    }
+    [data-testid="stMetricValue"] {
+        color: #1f2937 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -366,12 +446,12 @@ def render_main_app():
             st.rerun()
     
     # Main content area
-    st.markdown(f"# 🔄 SyncroX - Room `{st.session_state.current_room}`")
+    st.markdown(f"<h1 style='color: #4b5563;'>🔄 SyncroX - Room <code>{st.session_state.current_room}</code></h1>", unsafe_allow_html=True)
     
     st.markdown("---")
     
     # Feature cards
-    st.markdown("### Choose a feature to get started:")
+    st.markdown("<h3 style='color: #6b7280;'>Choose a feature to get started:</h3>", unsafe_allow_html=True)
     
     col1, col2, col3, col4 = st.columns(4)
     
@@ -418,7 +498,7 @@ def render_main_app():
     st.markdown("---")
     
     # Quick stats
-    st.markdown("### 📈 Room Activity")
+    st.markdown("<h3 style='color: #6b7280;'>📈 Room Activity</h3>", unsafe_allow_html=True)
     col_a, col_b, col_c = st.columns(3)
     with col_a:
         st.metric("Room Code", st.session_state.current_room)
@@ -429,12 +509,7 @@ def render_main_app():
     
     st.markdown("---")
     
-    # Info section
-    st.info(
-        "💡 **Tip:** Use the sidebar on the left to navigate between features. "
-        "All features in this room are synchronized in real-time!"
-    )
-
+    
     # Footer on main app page
     render_footer()
 
