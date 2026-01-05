@@ -327,41 +327,9 @@ if not st.session_state.get("is_logged_in", False):
         st.switch_page("app.py")
     st.stop()
 
-# Sidebar - User info and navigation
-with st.sidebar:
-    st.markdown("### 👤 User Information")
-    st.info(f"**Name:** {st.session_state.username}\n\n**Room:** `{st.session_state.current_room}`")
-    
-    st.markdown("---")
-    
-    st.markdown("### 🧭 Navigation")
-    st.caption("Select a feature below:")
-    
-    # Navigation buttons
-    if st.button("💬 Chat", use_container_width=True):
-        st.switch_page("pages/chat.py")
-    
-    if st.button("🤝 Code Editor", use_container_width=True):
-        st.switch_page("pages/code_editor.py")
-    
-    if st.button("📁 File Manager", use_container_width=True):
-        st.switch_page("pages/file_manager.py")
-    
-    if st.button("📊 Dashboard", use_container_width=True, disabled=True):
-        st.switch_page("pages/dashboard_page.py")
-    
-    st.markdown("---")
-    
-    # Logout button
-    if st.button("🚪 Leave Room & Logout", use_container_width=True, type="secondary"):
-        st.session_state.is_logged_in = False
-        st.session_state.username = ""
-        st.session_state.current_room = ""
-        # Clear all client connections
-        for key in list(st.session_state.keys()):
-            if key.endswith('_client'):
-                st.session_state.pop(key)
-        st.switch_page("app.py")
+# Sidebar - shared component
+from components.sidebar import render_sidebar
+render_sidebar(current_page="dashboard")
 
 
 def check_tcp_server(host: str, port: int, timeout: float = 0.5):
@@ -433,21 +401,43 @@ if HAS_PLOTTING:
                         st.metric("Total Events", f"{len(df):,}")
                     
                     # ---------- NEW: per-file filter ----------
-                    if "file" in df.columns:
-                        file_names = sorted(df["file"].dropna().unique())
-                        st.markdown("**🔍 Filter Options**")
-                        file_choice = st.selectbox(
-                            "Select file to analyze",
-                            ["All files"] + file_names,
-                            help="Filter metrics by specific file"
-                        )
-                        if file_choice != "All files":
-                            df = df[df["file"] == file_choice].copy()
-                            st.info(f"📌 Filtered to: **{file_choice}** ({len(df):,} events)")
+                    filter_col1, filter_col2 = st.columns(2)
+                    
+                    with filter_col1:
+                        if "file" in df.columns:
+                            file_names = sorted(df["file"].dropna().unique())
+                            st.markdown("**🔍 Filter by File**")
+                            file_choice = st.selectbox(
+                                "Select file to analyze",
+                                ["All files"] + file_names,
+                                help="Filter metrics by specific file"
+                            )
+                            if file_choice != "All files":
+                                df = df[df["file"] == file_choice].copy()
                         else:
                             file_choice = "All files"
-                    else:
-                        file_choice = "All files"
+                    
+                    with filter_col2:
+                        if "algo" in df.columns:
+                            algos = sorted(df["algo"].dropna().unique())
+                            st.markdown("**🔧 Filter by Algorithm**")
+                            algo_choice = st.selectbox(
+                                "Select algorithm",
+                                ["All algorithms"] + algos,
+                                help="Filter metrics by congestion control algorithm"
+                            )
+                            if algo_choice != "All algorithms":
+                                df = df[df["algo"] == algo_choice].copy()
+                        else:
+                            algo_choice = "All algorithms"
+                    
+                    if file_choice != "All files" or algo_choice != "All algorithms":
+                        filter_info = []
+                        if file_choice != "All files":
+                            filter_info.append(f"File: **{file_choice}**")
+                        if algo_choice != "All algorithms":
+                            filter_info.append(f"Algorithm: **{algo_choice.upper()}**")
+                        st.info(f"📌 Filtered: {', '.join(filter_info)} ({len(df):,} events)")
                     
                     st.markdown("---")
                     
@@ -488,9 +478,14 @@ if HAS_PLOTTING:
                                 )
                             ax1.set_xlabel("Chunk Sequence", fontweight='bold')
                             ax1.set_ylabel("RTT (ms)", fontweight='bold')
-                            title_suffix = f" – {file_choice}" if file_choice != "All files" else ""
-                            ax1.set_title("Round-Trip Time Analysis" + title_suffix, fontweight='bold', pad=15)
-                            ax1.legend(loc='best', framealpha=0.9)
+                            
+                            # Build title with filters
+                            current_algo = df["algo"].iloc[0].upper() if "algo" in df.columns else "TCP"
+                            title_parts = [f"RTT Analysis ({current_algo})"]
+                            if file_choice != "All files":
+                                title_parts.append(file_choice[:30])
+                            ax1.set_title(" – ".join(title_parts), fontweight='bold', pad=15)
+                            ax1.legend(loc='best', framealpha=0.9, title="Metrics")
                             ax1.grid(True, alpha=0.2, linestyle='--', linewidth=0.5)
                             ax1.spines['top'].set_visible(False)
                             ax1.spines['right'].set_visible(False)
@@ -502,22 +497,34 @@ if HAS_PLOTTING:
                             st.markdown("**📊 Congestion Window Evolution**")
                             
                             fig2, ax2 = plt.subplots(figsize=(7, 5))
+                            current_algo = df["algo"].iloc[0] if "algo" in df.columns else "unknown"
+                            algo_label = current_algo.upper()
+                            
                             ax2.plot(
                                 df["seq"], 
                                 df["cwnd"], 
                                 marker="o", 
                                 markersize=3,
-                                color="#10b981", 
+                                color="#10b981" if current_algo == "reno" else "#f59e0b", 
                                 alpha=0.8, 
-                                label="CWND",
+                                label=f"CWND ({algo_label})",
                                 linewidth=2
                             )
                             ax2.set_xlabel("Event Sequence", fontweight='bold')
                             ax2.set_ylabel("CWND (segments)", fontweight='bold')
-                            algo = df["algo"].iloc[0] if "algo" in df.columns else "unknown"
-                            ax2.set_title(f"Congestion Control ({algo.upper()}){title_suffix}", fontweight='bold', pad=15)
+                            
+                            # Build title with filters
+                            title_parts = [f"{algo_label} Congestion Control"]
+                            if file_choice != "All files":
+                                title_parts.append(file_choice[:30])
+                            ax2.set_title(" – ".join(title_parts), fontweight='bold', pad=15)
                             ax2.grid(True, alpha=0.2, linestyle='--', linewidth=0.5)
-                            ax2.legend(loc='best', framealpha=0.9)
+                            
+                            # Add algorithm behavior note in legend
+                            if current_algo == "tahoe":
+                                ax2.legend(loc='best', framealpha=0.9, title="Tahoe: cwnd→1 on loss")
+                            else:
+                                ax2.legend(loc='best', framealpha=0.9, title="Reno: cwnd→ssthresh on loss")
                             ax2.spines['top'].set_visible(False)
                             ax2.spines['right'].set_visible(False)
                             plt.tight_layout()
@@ -576,17 +583,29 @@ if HAS_PLOTTING:
                             label="Congestion Avoidance Region",
                         )
                         
-                        algo = df_plot["algo"].iloc[0] if "algo" in df_plot.columns else "unknown"
-                        title_suffix = f" – {file_choice}" if file_choice != "All files" else ""
+                        current_algo = df_plot["algo"].iloc[0] if "algo" in df_plot.columns else "unknown"
+                        algo_label = current_algo.upper()
+                        
+                        # Build comprehensive title
+                        title_parts = [f"TCP {algo_label} Congestion Control Dynamics"]
+                        if file_choice != "All files":
+                            title_parts.append(file_choice[:40])
+                        
                         ax3.set_xlabel("Transmission Round", fontsize=13, fontweight='bold')
                         ax3.set_ylabel("Window Size (segments)", fontsize=13, fontweight='bold')
                         ax3.set_title(
-                            f"TCP {algo.upper()} Congestion Control Dynamics{title_suffix}", 
+                            " – ".join(title_parts), 
                             fontsize=15, 
                             fontweight='bold',
                             pad=20
                         )
-                        ax3.legend(loc="best", fontsize=10, framealpha=0.95, edgecolor='#374151')
+                        
+                        # Algorithm-specific legend title
+                        if current_algo == "tahoe":
+                            legend_title = "TAHOE: On loss → cwnd = 1 (restart slow start)"
+                        else:
+                            legend_title = "RENO: On loss → cwnd = ssthresh (fast recovery)"
+                        ax3.legend(loc="best", fontsize=10, framealpha=0.95, edgecolor='#374151', title=legend_title)
                         ax3.grid(True, alpha=0.2, linestyle=':', linewidth=0.5)
                         ax3.set_xlim(0, len(df_plot) + 1)
                         ax3.set_ylim(0, max(df_plot["cwnd"].max(), df_plot["ssthresh"].max()) * 1.15)
@@ -622,90 +641,5 @@ if HAS_PLOTTING:
                         st.caption(f"• Room {room_num}")
 else:
     st.warning("⚠️ Install pandas and matplotlib to view metrics: `pip install pandas matplotlib`")
-
-st.markdown("---")
-
-# ---- Networking Concepts Section ----
-st.markdown('<div class="section-header"><h2>🎓 Networking Concepts Demonstrated</h2></div>', unsafe_allow_html=True)
-
-with st.expander("📡 Custom TCP Protocols", expanded=False):
-    st.markdown("""
-    #### Chat Protocol (Port 9009)
-    - **HELLO <username>**: Initial handshake to establish client identity
-    - **CREATE_ROOM**: Server generates unique 4-digit room code and assigns client
-    - **JOIN_ROOM <code>**: Join existing room (auto-creates if doesn't exist)
-    - **MSG <text>**: Broadcast message to all room members with automatic echo
-    - **LIST_ROOMS**: Query all active room codes on server
-    - **BYE**: Graceful disconnect with cleanup of client resources
-    - **Room Broadcasting**: Messages are multicast to all sockets in the room set
-    - **Username Tracking**: Server maintains client→username mapping for attribution
-    
-    #### File Transfer Protocol (Port 9010)
-    - **UPLOAD <filename> <filesize> <room> <algo>**: Initiate file upload with metadata
-    - **Size-prefixed chunks**: Each chunk sent as `<4-byte-size><data>` for framing
-    - **Per-chunk ACK**: Server responds with `ACK <seq> <timestamp>` for RTT measurement
-    - **Checksum validation**: Optional integrity checking on received chunks
-    - **DOWNLOAD <filename> <room>**: Request file retrieval from room storage
-    - **LIST <room>**: Enumerate all uploaded files in specific room
-    - **Binary safe**: Uses raw socket buffers, no text encoding on file data
-    
-    #### Collaborative Editor Protocol (Port 9011)
-    - **JOIN <room> <username>**: Subscribe to document updates for room
-    - **SET <content>**: Push local document changes to server
-    - **DOC <content>**: Server broadcasts synchronized document state
-    - **USERS <count>**: Server notifies clients of active collaborators
-    - **Last-write-wins**: Simple conflict resolution, no operational transforms
-    - **Auto-sync**: Clients poll for DOC updates every 500ms for real-time feel
-    
-    #### Code Execution Protocol (Port 9012)
-    - **EXECUTE <lang> <code> [stdin]**: Submit code with language and optional input
-    - **Docker isolation**: Each execution runs in ephemeral container with resource limits
-    - **RESULT <stdout> <stderr> <rc> <time_ms>**: Return execution output and metrics
-    - **Multi-language support**: Python, C, C++, Java with appropriate runtimes
-    - **Security constraints**: 256MB memory, 0.5 CPU cores, 30s timeout per execution
-    - **Compilation handling**: Transparent gcc/g++/javac compilation before execution
-    """)
-
-with st.expander("🔄 Flow & Congestion Control", expanded=True):
-    st.markdown("""
-    #### TCP Congestion Control Simulation
-    - **Slow Start Phase**: CWND grows exponentially (doubles per RTT) until ssthresh
-    - **Congestion Avoidance**: Linear growth (+1 MSS per RTT) above ssthresh
-    - **Tahoe Algorithm**: On loss, ssthresh = cwnd/2, cwnd resets to 1 MSS
-    - **Reno Algorithm**: On loss, ssthresh = cwnd/2, cwnd = ssthresh (faster recovery)
-    
-    #### RTT Estimation
-    - **Sample RTT**: Measure time between chunk send and ACK receipt
-    - **EWMA Smoothing**: `SRTT = (1-α)×SRTT + α×RTT` where α=0.125
-    - **Adaptive timeout**: RTO calculated from SRTT + 4×RTTVAR
-    
-    #### Chunking Strategy
-    - **Fixed chunk size**: 4096 bytes (4KB) per segment for predictable behavior
-    - **Sequential numbering**: Each chunk gets sequence number for ordering
-    
-    #### Metrics Logging
-    - **Per-transfer CSV**: Records seq, event, cwnd, ssthresh, rtt_ms, srtt_ms
-    - **Room isolation**: Metrics tagged with room code and filename
-    - **Real-time plotting**: Dashboard visualizes CWND evolution and threshold crossings
-    """)
-
-with st.expander("🔒 Reliability & Security", expanded=True):
-    st.markdown("""
-    #### Protocol Reliability
-    - **Request-Response Pattern**: Every client command receives OK/ERROR acknowledgment
-    - **Error propagation**: Detailed error messages
-    - **Timeout handling**: Client and server enforce timeouts
-    
-    #### Room-Based Isolation
-    - **Namespace separation**: 4-digit room codes partition all resources
-    - **No cross-room leakage**: Files, messages, and documents scoped to room
-    
-    #### Docker Sandbox Security
-    - **Process isolation**: Each execution in separate container, no shared state
-    - **Resource limits**: CPU, memory, and time constraints prevent DoS
-    
-    #### Rate Limiting & DoS Prevention
-    - **Chat rate limit**: Max messages per time window per client
-    """)
 
 st.markdown("---")

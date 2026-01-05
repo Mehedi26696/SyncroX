@@ -1,11 +1,88 @@
-2026-01-05 19:55:46,390 Connected to 10.22.39.83:9011 as ABS
-2026-01-05 19:55:46,393 Received DOC header: DOC 2498 python 48 server
-2026-01-05 19:55:46,393 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
-2026-01-05 19:55:46,395 Received DOC header: DOC 2498 python 48 server
-2026-01-05 19:55:46,396 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
-2026-01-05 19:55:46,397 Received DOC header: DOC 2498 python 48 server
-2026-01-05 19:55:46,421 Put doc update in queue. Lang: python, Size: 48. Queue size: 2
-2026-01-05 19:55:47,902 Received DOC header: DOC 2498 python 48 server
-2026-01-05 19:55:47,902 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
-2026-01-05 19:55:49,859 Received DOC header: DOC 2498 python 48 server
-2026-01-05 19:55:49,864 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-06 00:26:26,466 Connected to 10.22.39.83:9011 as ABS
+2026-01-06 00:26:26,468 Received DOC header: DOC 2498 python 48 server
+2026-01-06 00:26:26,470 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-06 00:26:26,507 Received DOC header: DOC 2498 python 48 server
+2026-01-06 00:26:26,507 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-06 00:26:26,507 Received DOC header: DOC 2498 python 48 server
+2026-01-06 00:26:26,507 Put doc update in queue. Lang: python, Size: 48. Queue size: 2
+2026-01-06 00:26:28,052 Received DOC header: DOC 2498 python 48 server
+2026-01-06 00:26:28,052 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-06 00:26:30,056 Received DOC header: DOC 2498 python 48 server
+2026-01-06 00:26:30,056 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-06 00:26:30,497 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:30,497 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:31,705 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:31,709 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:33,693 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:33,693 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:36,028 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:36,032 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:38,024 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:38,026 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:40,018 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:40,022 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:42,029 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:42,029 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:44,019 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:44,019 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:46,028 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:46,029 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:48,031 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:48,031 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:50,027 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:50,027 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:52,038 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:52,039 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:54,026 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:54,026 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:56,042 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:56,042 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:26:58,044 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:26:58,045 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:27:00,043 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:27:00,044 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:27:02,030 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:27:02,032 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:27:04,032 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:27:04,032 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:27:05,698 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:27:05,698 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:27:07,709 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:27:07,710 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:27:09,721 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:27:09,721 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:27:11,698 Received DOC header: DOC 2498 java 126 server
+2026-01-06 00:27:11,698 Put doc update in queue. Lang: java, Size: 126. Queue size: 1
+2026-01-06 00:27:13,664 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:13,667 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:15,694 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:15,694 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:17,702 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:17,702 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:39,814 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:39,833 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:39,833 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:39,833 Put doc update in queue. Lang: java, Size: 572. Queue size: 2
+2026-01-06 00:27:42,082 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:42,082 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:44,554 Connected to 10.22.39.83:9011 as ABS
+2026-01-06 00:27:44,557 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:44,557 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:44,562 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:44,565 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:44,565 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:44,565 Put doc update in queue. Lang: java, Size: 572. Queue size: 2
+2026-01-06 00:27:46,935 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:46,935 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:48,932 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:48,932 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:50,931 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:50,932 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:52,914 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:52,914 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:54,935 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:54,935 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:56,928 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:56,929 Put doc update in queue. Lang: java, Size: 572. Queue size: 1
+2026-01-06 00:27:58,918 Received DOC header: DOC 2498 java 572 server
+2026-01-06 00:27:58,918 Put doc update in queue. Lang: java, Size: 572. Queue size: 1

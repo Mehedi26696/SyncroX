@@ -8,8 +8,13 @@ PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+# Add components folder to path
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
 import streamlit as st
 from PIL import Image
+from components.sidebar import render_sidebar
 
 # ============================================================================
 # SYNCRO-X MAIN APP - WELCOME & ROOM MANAGEMENT
@@ -403,47 +408,8 @@ def render_main_app():
     </style>
     """, unsafe_allow_html=True)
     
-    # Sidebar - User info and navigation
-    with st.sidebar:
-        st.markdown("### 👤 User Information")
-        st.info(f"**Name:** {st.session_state.username}\n\n**Room:** `{st.session_state.current_room}`")
-        
-        st.markdown("---")
-        
-        st.markdown("### 🧭 Navigation")
-        st.caption("Select a feature below:")
-        
-        # Navigation buttons
-        if st.button("💬 Chat", use_container_width=True):
-            st.switch_page("pages/chat.py")
-        
-        if st.button("🤝 Code Editor", use_container_width=True):
-            st.switch_page("pages/code_editor.py")
-        
-        if st.button("📁 File Manager", use_container_width=True):
-            st.switch_page("pages/file_manager.py")
-        
-        if st.button("📊 Dashboard", use_container_width=True):
-            st.switch_page("pages/dashboard_page.py")
-        
-        st.markdown("---")
-        
-        # Logout button
-        if st.button("🚪 Leave Room & Logout", use_container_width=True, type="secondary"):
-            st.session_state.is_logged_in = False
-            st.session_state.username = ""
-            st.session_state.current_room = ""
-            # Clear all client connections and chat state
-            keys_to_remove = []
-            for key in list(st.session_state.keys()):
-                if key.endswith('_client') or key.startswith('chat_') or key.startswith('collab_') or key.startswith('exec_'):
-                    keys_to_remove.append(key)
-            for key in keys_to_remove:
-                try:
-                    del st.session_state[key]
-                except:
-                    pass
-            st.rerun()
+    # Sidebar - Shared component
+    render_sidebar(current_page="home")
     
     # Main content area
     st.markdown(f"<h1 style='color: #4b5563;'>🔄 SyncroX - Room <code>{st.session_state.current_room}</code></h1>", unsafe_allow_html=True)

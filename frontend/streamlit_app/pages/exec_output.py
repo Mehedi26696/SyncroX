@@ -176,44 +176,9 @@ if not st.session_state.get("is_logged_in", False):
         st.switch_page("app.py")
     st.stop()
 
-# Sidebar - User info and navigation
-with st.sidebar:
-    st.markdown("### 👤 User Information")
-    st.info(f"**Name:** {st.session_state.username}\n\n**Room:** `{st.session_state.current_room}`")
-    
-    st.markdown("---")
-    
-    st.markdown("### 🧭 Navigation")
-    st.caption("Select a feature below:")
-    
-    # Navigation buttons
-    if st.button("💬 Chat", use_container_width=True):
-        st.switch_page("pages/chat.py")
-    
-    if st.button("🤝 Code Editor", use_container_width=True):
-        st.switch_page("pages/code_editor.py")
-    
-    if st.button("📁 File Manager", use_container_width=True):
-        st.switch_page("pages/file_manager.py")
-    
-    if st.button("📊 Dashboard", use_container_width=True):
-        st.switch_page("pages/dashboard_page.py")
-    
-    if st.button("📜 Execution Output", use_container_width=True, disabled=True):
-        st.switch_page("pages/exec_output.py")
-    
-    st.markdown("---")
-    
-    # Logout button
-    if st.button("🚪 Leave Room & Logout", use_container_width=True, type="secondary"):
-        st.session_state.is_logged_in = False
-        st.session_state.username = ""
-        st.session_state.current_room = ""
-        # Clear all client connections
-        for key in list(st.session_state.keys()):
-            if key.endswith('_client'):
-                st.session_state.pop(key)
-        st.switch_page("app.py")
+# Sidebar - shared component
+from components.sidebar import render_sidebar
+render_sidebar(current_page="exec_output")
 
 # ============================================================================
 # Main content
