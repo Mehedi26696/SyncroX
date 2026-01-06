@@ -8,10 +8,11 @@
   <img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/Streamlit-1.36.0-red.svg" alt="Streamlit">
   <img src="https://img.shields.io/badge/Docker-Required-2496ED.svg" alt="Docker">
+  <img src="https://img.shields.io/badge/Reliable_UDP-Tahoe/Reno-orange.svg" alt="Reliable UDP">
   <img src="https://img.shields.io/badge/TCP-Custom_Protocol-green.svg" alt="TCP">
 </p>
 
-**A production-grade collaborative platform demonstrating advanced networking concepts including custom TCP protocols, Tahoe/Reno congestion control, RTT estimation, and secure Docker-based code execution for the Computer Networking Lab course.**
+**A production-grade collaborative platform demonstrating advanced networking concepts including custom Reliable UDP protocols, Tahoe/Reno congestion control, 3-way handshakes, cumulative ACKs, and secure Docker-based code execution.**
 
 <p align="center">
   <a href="#key-features">Features</a> •
@@ -78,13 +79,13 @@ Built entirely with Python, Streamlit, and Docker, SyncroX provides a robust env
 - Syntax highlighting
 - Active user indicators
 
-### 3. File Manager
-- Secure file upload/download
-- Tahoe and Reno congestion control algorithms
-- Per-chunk RTT measurement
-- Binary-safe transfers with checksums
-- Room-isolated storage
-- Real-time metrics visualization
+### 3. Reliable File Transfer (UDP)
+- **Advanced Reliability**: Custom layer over UDP with ARQ (Automatic Repeat Request)
+- **Congestion Control**: Full implementation of Tahoe and Reno algorithms
+- **Stateful Connections**: 3-way handshake (SYN, SYN-ACK, ACK) and 4-way termination
+- **Sliding Window**: Efficient multi-packet in-flight management with cumulative ACKs
+- **Instrumentation**: Real-time CWND, RTT, and Phase transitions logged to terminal
+- **Data Integrity**: Binary-safe transfers with chunk-level sequence tracking
 
 ### 4. Dashboard
 - Real-time server status monitoring
@@ -117,9 +118,9 @@ SyncroX follows a **client-server architecture** with four independent TCP serve
          TCP  │    TCP  │    TCP  │    TCP  │
               ▼         ▼         ▼         ▼
 ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-│  Chat    │ │  Collab  │ │   File   │ │   Code   │
-│  Server  │ │  Server  │ │  Server  │ │   Exec   │
-│ Port:9009│ │ Port:9011│ │ Port:9010│ │ Port:9012│
+│  Chat    │ │  Collab  │ │ Reliable │ │   Code   │
+│  Server  │ │  Server  │ │UDP File  │ │   Exec   │
+│ Port:9009│ │ Port:9011│ │ Port:9011│ │ Port:9012│
 └──────────┘ └──────────┘ └──────────┘ └──────────┘
                                               │
                                          Docker
@@ -157,19 +158,24 @@ Features:
 - Automatic room cleanup
 ```
 
-#### File Transfer Server (Port 9010)
+#### Reliable UDP File Transfer (Port 9011 / TCP 9010)
 ```
-Commands:
-- UPLOAD <room> <filename> <size>  → OK/ERROR
-- DOWNLOAD <room> <filename>       → FILE <size> <chunks...>
+Commands (Control via TCP 9010):
 - LIST <room>                      → FILES <count> <file1> <file2>...
+- DOWNLOAD <room> <filename>       → Init UDP Transfer
+
+Protocol (Data via UDP 9011):
+1. Handshake: SYN → SYN-ACK → ACK
+2. Transfer: Sliding Window DATA packets with Cumulative ACKs
+3. Flow Control: CWND and ssthresh management (Tahoe/Reno)
+4. Termination: FIN → FIN-ACK
 
 Features:
-- 4KB chunk size
-- Per-chunk ACK with RTT
-- Tahoe/Reno congestion control
-- Binary-safe transfers
-- Checksum validation
+- Fixed 4KB segments
+- EWMA-based RTT/RTO (min RTO 200ms)
+- Cumulative ACKs (ack = next_expected - 1)
+- Fast Retransmit (on 3 duplicate ACKs)
+- Timeout backoff protection
 ```
 
 #### Collaborative Editor (Port 9011)
@@ -207,18 +213,22 @@ Security:
 ### Congestion Control Implementation
 
 **Tahoe Algorithm:**
-1. Slow start: CWND doubles every RTT until ssthresh
-2. Congestion avoidance: CWND += 1 every RTT
-3. On packet loss: ssthresh = CWND/2, CWND = 1
+1. **Slow Start**: CWND doubles every RTT (increases by 1.0 per ACK) until ssthresh.
+2. **Congestion Avoidance**: CWND increases by 1/CWND per ACK (effectively +1.0 per CWND).
+3. **On Packet Loss**: ssthresh = CWND/2, CWND = 1.0 (strict reset).
 
 **Reno Algorithm:**
-1. Similar slow start and congestion avoidance
-2. On packet loss: ssthresh = CWND/2, CWND = ssthresh (fast recovery)
+1. **Slow Start & Congestion Avoidance**: Same as Tahoe.
+2. **Fast Retransmit**: Triggered by 3 duplicate ACKs.
+3. **Fast Recovery**: ssthresh = CWND/2, CWND = ssthresh + 3. CWND increases by 1.0 per additional duplicate ACK.
 
-**RTT Estimation:**
-- SRTT = (1 - α) × SRTT + α × RTT (α = 0.125)
-- RTTVAR = (1 - β) × RTTVAR + β × |SRTT - RTT| (β = 0.25)
-- RTO = SRTT + 4 × RTTVAR
+**Reliability Mechanisms:**
+- **Cumulative ACKs**: Every ACK reports the highest contiguous byte/packet received (`ack = next_expected - 1`).
+- **RTT Estimation (EWMA)**:
+  - `SRTT = (1 - α) × SRTT + α × RTT` (α = 0.125)
+  - `RTTVAR = (1 - β) × RTTVAR + β × |SRTT - RTT|` (β = 0.25)
+  - `RTO = max(SRTT + 4 × RTTVAR, 200ms)`
+- **Orderly Termination**: 4-way FIN/FIN-ACK teardown ensures zero data loss during session closure.
 
 ---
 
