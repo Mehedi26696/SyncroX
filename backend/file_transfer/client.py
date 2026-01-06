@@ -1,9 +1,12 @@
 import socket
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Union
 import time
 import csv
+import json
+import random
 from pathlib import Path
 
+# --- Configuration ---
 CHUNK_SIZE = 4096
 ALPHA = 0.125  # EWMA smoothing
 BETA = 0.25   # for RTT variance
@@ -12,287 +15,242 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 METRICS_DIR = BASE_DIR / "data" / "metrics"
 METRICS_DIR.mkdir(parents=True, exist_ok=True)
 
+try:
+    from .protocol import CHUNK_SIZE, ALPHA, BETA, FileReceiver, FileSender, FileTransferMetrics
+except (ImportError, ValueError):
+    from protocol import CHUNK_SIZE, ALPHA, BETA, FileReceiver, FileSender, FileTransferMetrics
 
-class FileTransferMetrics:
+try:
+    from config import SERVER_HOST, FILE_PORT, SYNCROX_LOSS_PROB
+except ImportError:
+    SERVER_HOST = "127.0.0.1"
+    FILE_PORT = 9010
+    SYNCROX_LOSS_PROB = 0.0
+
+# UDP Port is TCP Port + 1 by convention in our server.py
+UDP_PORT = FILE_PORT + 1
+
+# Shared Reliable UDP classes removed, now importing from protocol.py
+
+class SyncroXFileClient:
     """
-    Tracks EWMA RTT, RTO and Tahoe/Reno cwnd per upload,
-    and logs to CSV per room, per file.
+    Unified file client: 
+    - Uploads using Reliable UDP (port 9011)
+    - Lists and Downloads using TCP (port 9010)
     """
-
-    def __init__(self, room: str, filename: str, algo: str = "reno", direction: str = "upload"):
-        self.room = room
-        self.filename = filename
-        self.algo = algo.lower()          # 'reno' or 'tahoe'
-        self.direction = direction        # 'upload' (you can extend later with 'download')
-        self.cwnd = 1.0                   # in segments
-        self.ssthresh = 8.0
-        self.srtt = None                  # smoothed RTT (ms)
-        self.rttvar = None                # RTT variance (ms)
-        self.rto = 1000.0                 # initial RTO (ms)
-        self.seq = 0                      # segment index
-
-        self.csv_path = METRICS_DIR / f"room_{room}_file_metrics.csv"
-        self.csv_file = self.csv_path.open("a", newline="", encoding="utf-8")
-        self.writer = csv.writer(self.csv_file)
-        if self.csv_file.tell() == 0:
-            self.writer.writerow(
-                [
-                    "ts",
-                    "room",
-                    "file",
-                    "direction",
-                    "seq",
-                    "bytes",
-                    "rtt_ms",
-                    "srtt_ms",
-                    "rto_ms",
-                    "cwnd",
-                    "ssthresh",
-                    "event",
-                    "algo",
-                ]
-            )
-
-    def _log(self, bytes_sent: int, rtt_ms: float | None, event: str):
-        ts = time.time()
-        self.writer.writerow(
-            [
-                ts,
-                self.room,
-                self.filename,
-                self.direction,
-                self.seq,
-                bytes_sent,
-                rtt_ms if rtt_ms is not None else "",
-                self.srtt if self.srtt is not None else "",
-                self.rto,
-                self.cwnd,
-                self.ssthresh,
-                event,
-                self.algo,
-            ]
-        )
-        self.csv_file.flush()
-
-    def on_ack(self, bytes_sent: int, rtt_ms: float):
-        """
-        Called when a chunk is ACKed – update EWMA & cwnd (Tahoe/Reno).
-        """
-        self.seq += 1
-
-        # --- EWMA RTT like real TCP ---
-        if self.srtt is None:
-            self.srtt = rtt_ms
-            self.rttvar = rtt_ms / 2.0
-        else:
-            self.rttvar = (1 - BETA) * self.rttvar + BETA * abs(self.srtt - rtt_ms)
-            self.srtt = (1 - ALPHA) * self.srtt + ALPHA * rtt_ms
-
-        self.rto = self.srtt + 4 * self.rttvar
-
-        # --- congestion control (Tahoe/Reno style) ---
-        if self.cwnd < self.ssthresh:
-            # slow start: exponential growth
-            self.cwnd += 1.0
-        else:
-            # congestion avoidance: linear growth (~1 per RTT)
-            self.cwnd += 1.0 / self.cwnd
-
-        self._log(bytes_sent, rtt_ms, event="ACK")
-
-    def on_loss(self, bytes_sent: int):
-        """
-        Called when a timeout is treated as a loss.
-        """
-        self.seq += 1
-
-        # Tahoe vs Reno behaviour
-        if self.algo == "tahoe":
-            self.ssthresh = max(self.cwnd / 2.0, 1.0)
-            self.cwnd = 1.0
-        else:  # reno
-            self.ssthresh = max(self.cwnd / 2.0, 1.0)
-            self.cwnd = self.ssthresh
-
-        # back off RTO (cap at 30 seconds to avoid Windows socket timeout overflow)
-        self.rto = min(self.rto * 2.0, 30000.0)
-
-        self._log(bytes_sent, None, event="LOSS")
-
-    def close(self):
-        try:
-            self.csv_file.close()
-        except Exception:
-            pass
-
-
-class TcpFileClient:
-    try:
-        from config import SERVER_HOST, FILE_PORT
-    except ImportError:
-        SERVER_HOST = "127.0.0.1"
-        FILE_PORT = 9010
-    def __init__(self, host: str = None, port: int = None, algo: str = "reno"):
+    def __init__(self, host=None, port=None, algo="reno"):
         self.host = host if host is not None else SERVER_HOST
-        self.port = port if port is not None else FILE_PORT
-        self.algo = algo.lower()  # 'reno' or 'tahoe'
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((self.host, self.port))
-        self.file = self.sock.makefile("rwb")
+        self.tcp_port = port if port is not None else FILE_PORT
+        self.udp_port = self.tcp_port + 1
+        self.algo = algo.lower()
+        
+        # TCP Setup (for metadata and downloads)
+        self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.tcp_sock.connect((self.host, self.tcp_port))
+        self.file = self.tcp_sock.makefile("rb")
+        
+        # UDP Setup (for uploads)
+        self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_sock.settimeout(1.0)
 
-    def _send_line(self, text: str):
-        self.file.write((text + "\n").encode("utf-8"))
-        self.file.flush()
+    def _send_tcp_line(self, line: str):
+        self.tcp_sock.sendall((line + "\n").encode("utf-8"))
 
     def upload_bytes(self, room: str, filename: str, data: bytes) -> str:
-        """
-        Upload file bytes in CHUNK_SIZE segments, with per-chunk ACK.
-        Also measures per-chunk RTT and logs EWMA + cwnd into CSV for this file.
-        """
-        size = len(data)
-        self._send_line(f"UPLOAD {room} {filename} {size}")
-
-        metrics = FileTransferMetrics(room, filename, algo=self.algo, direction="upload")
-        remaining = size
-        offset = 0
-
-        # --- Simulated packet loss ---
-        import random
-        try:
-            from config import SYNCROX_LOSS_PROB
-        except ImportError:
-            SYNCROX_LOSS_PROB = 0.0
-
-        try:
-            while remaining > 0:
-                chunk = data[offset : offset + CHUNK_SIZE]
-                bytes_to_send = len(chunk)
-                if bytes_to_send == 0:
+        """UDP Upload with unified symmetry logic."""
+        # 1. 3-way Handshake
+        handshake_done = False
+        start_h = time.time()
+        while time.time() - start_h < 5:
+            syn = {"type": "SYN", "room": room, "filename": filename}
+            self.udp_sock.sendto(json.dumps(syn).encode("utf-8"), (self.host, self.udp_port))
+            try:
+                self.udp_sock.settimeout(1.0)
+                resp, _ = self.udp_sock.recvfrom(65536)
+                msg = json.loads(resp.decode("utf-8"))
+                if msg.get("type") == "SYN-ACK" and msg.get("filename") == filename:
+                    ack = {"type": "ACK", "room": room, "filename": filename}
+                    self.udp_sock.sendto(json.dumps(ack).encode("utf-8"), (self.host, self.udp_port))
+                    handshake_done = True
+                    print(f"[UDP Handshake] Established with {self.host}:{self.udp_port}")
                     break
+            except socket.timeout:
+                continue
+        if not handshake_done: return "ERROR Handshake failed"
 
-                # Retry loop for this chunk (retransmit on loss/timeout)
-                max_retries = 5
-                retry_count = 0
-                chunk_sent_successfully = False
+        metrics = FileTransferMetrics(room, filename, METRICS_DIR, algo=self.algo, direction="upload")
+        sender = FileSender(room, filename, data, (self.host, self.udp_port), self.udp_sock, metrics, loss_prob=SYNCROX_LOSS_PROB)
+        
+        next_seq = 1
+        rwnd = 32 # Initial
+        
+        while metrics.last_ack < sender.total_packets:
+            next_seq = sender.send_window(next_seq, metrics.last_ack + 1, rwnd)
+            
+            try:
+                self.udp_sock.settimeout(0.2)
+                resp, _ = self.udp_sock.recvfrom(65536)
+                ack = json.loads(resp.decode("utf-8"))
+                if ack.get("type") == "ACK" and ack.get("filename") == filename:
+                    ack_val = ack["ack"]
+                    rwnd = ack.get("rwnd", rwnd)
+                    sent_t = sender.sent_times.get(ack_val)
+                    if sent_t is None:
+                        sent_t = sender.sent_times.get(metrics.last_ack + 1, time.time())
+                    
+                    rtt_ms = (time.time() - sent_t) * 1000.0
+                    
+                    if metrics.on_ack(ack_val, CHUNK_SIZE, rtt_ms):
+                        # Fast Retransmit missing
+                        missing = metrics.last_ack + 1
+                        if missing <= sender.total_packets:
+                            offset = (missing - 1) * CHUNK_SIZE
+                            pkt = {
+                                "type": "DATA", "room": room, "filename": filename,
+                                "seq": missing, "total": sender.total_packets, "payload_hex": data[offset:offset+CHUNK_SIZE].hex()
+                            }
+                            self.udp_sock.sendto(json.dumps(pkt).encode("utf-8"), (self.host, self.udp_port))
+                            # Fast retransmit manually sent, but we don't advance next_seq here
+                    next_seq = max(next_seq, metrics.last_ack + 1)
+            except socket.timeout:
+                pass
+            
+            base = metrics.last_ack + 1
+            if base in sender.sent_times:
+                new_next, ok = sender.handle_timeout(base, 5)
+            else:
+                new_next, ok = (-1, True)
+            if not ok:
+                metrics.close()
+                return "ERROR Max retries exceeded"
+            if new_next != -1: next_seq = new_next
+            
+        # 2. Termination (Wait for FIN from server receiver)
+        start_term = time.time()
+        while time.time() - start_term < 3:
+            try:
+                self.udp_sock.settimeout(1.0)
+                resp, _ = self.udp_sock.recvfrom(65536)
+                msg = json.loads(resp.decode("utf-8"))
+                if msg.get("type") == "FIN" and msg.get("filename") == filename:
+                    ack = {"type": "FIN-ACK", "room": room, "filename": filename}
+                    self.udp_sock.sendto(json.dumps(ack).encode("utf-8"), (self.host, self.udp_port))
+                    print(f"[UDP Termination] Session closed for {filename}")
+                    break
+            except socket.timeout:
+                pass
 
-                while not chunk_sent_successfully and retry_count < max_retries:
-                    # ALWAYS send the chunk - we simulate loss by ignoring ACK instead
-                    # This keeps server byte count in sync
-                    send_time = time.time()
-                    self.file.write(chunk)
-                    self.file.flush()
-
-                    # Simulate loss: pretend we didn't get ACK (triggers timeout + cwnd adjustment)
-                    simulate_loss_this_chunk = random.random() < SYNCROX_LOSS_PROB
-
-                    if simulate_loss_this_chunk:
-                        print(f"[SIM LOSS] Simulating ACK loss for chunk {metrics.seq + 1}")
-                        # Don't wait for ACK - treat as timeout immediately
-                        metrics.on_loss(bytes_to_send)
-                        retry_count += 1
-                        print(f"[RETRANSMIT] Chunk {metrics.seq} simulated loss, retry {retry_count}/{max_retries}")
-                        # Small delay to simulate RTO wait
-                        time.sleep(0.1)
-                        continue  # "Retry" this chunk (resend)
-
-                    # RTO-based timeout (min 100ms, max 30 seconds to avoid Windows overflow)
-                    timeout_sec = max(min(metrics.rto / 1000.0, 30.0), 0.1)
-                    self.sock.settimeout(timeout_sec)
-
-                    # wait for ACK <room> <seq>
-                    try:
-                        ack_line = self.file.readline().decode("utf-8").strip()
-                    except socket.timeout:
-                        # Timeout - treat as loss, will retry
-                        metrics.on_loss(bytes_to_send)
-                        retry_count += 1
-                        print(f"[RETRANSMIT] Chunk {metrics.seq} timed out, retry {retry_count}/{max_retries}")
-                        continue  # Retry this chunk
-                    else:
-                        parts = ack_line.split()
-                        if len(parts) == 3 and parts[0] == "ACK":
-                            # compute RTT
-                            rtt_ms = (time.time() - send_time) * 1000.0
-                            metrics.on_ack(bytes_to_send, rtt_ms)
-                            chunk_sent_successfully = True
-                        else:
-                            # malformed ACK, log as loss and retry
-                            metrics.on_loss(bytes_to_send)
-                            retry_count += 1
-                            print(f"[RETRANSMIT] Malformed ACK, retry {retry_count}/{max_retries}")
-                            continue
-
-                if not chunk_sent_successfully:
-                    print(f"[ERROR] Chunk failed after {max_retries} retries, aborting upload")
-                    return "ERROR Max retries exceeded"
-
-                offset += bytes_to_send
-                remaining -= bytes_to_send
-
-            # after file done, read final response (OK SAVED / ERROR ...)
-            self.sock.settimeout(None)
-            resp = self.file.readline().decode("utf-8").strip()
-            return resp
-        finally:
-            metrics.close()
+        metrics.close()
+        return "OK SAVED"
 
     def list_files(self, room: str) -> List[Tuple[str, int, str]]:
-        self._send_line(f"LIST {room}")
+        """TCP List."""
+        self._send_tcp_line(f"LIST {room}")
         header = self.file.readline().decode("utf-8").strip()
-        parts = header.split()
-        if len(parts) != 2 or parts[0] != "FILES":
-            return []
+        if not header.startswith("FILES"): return []
         try:
-            n = int(parts[1])
-        except ValueError:
-            return []
+            n = int(header.split()[1])
+        except: return []
 
-        result: List[Tuple[str, int, str]] = []
+        result = []
         for _ in range(n):
             line = self.file.readline().decode("utf-8").strip()
-            if not line:
-                continue
-            # Format: <size> <created> <filename>
-            # Size and created first (no spaces), filename last (may have spaces)
+            if not line: continue
             parts = line.split(maxsplit=2)
-            if len(parts) < 3:
-                continue
-            size_str, created, name = parts
-            size = int(size_str)
-            result.append((name, size, created))
+            if len(parts) < 3: continue
+            result.append((parts[2], int(parts[0]), parts[1]))
         return result
 
-    def download_bytes(self, room: str, filename: str) -> bytes | None:
-        self._send_line(f"DOWNLOAD {room} {filename}")
-        header = self.file.readline().decode("utf-8").strip()
-        parts = header.split()
-        if parts[0] == "ERROR":
+    def download_bytes(self, room: str, filename: str) -> Optional[bytes]:
+        """UDP Download with reliability and cumulative ACKs."""
+        # 1. 3-way Handshake for Download
+        handshake_done = False
+        start_h = time.time()
+        while time.time() - start_h < 5:
+            pkt = {"type": "DOWNLOAD", "room": room, "filename": filename, "algo": self.algo}
+            self.udp_sock.sendto(json.dumps(pkt).encode("utf-8"), (self.host, self.udp_port))
+            try:
+                self.udp_sock.settimeout(1.0)
+                resp, _ = self.udp_sock.recvfrom(65536)
+                msg = json.loads(resp.decode("utf-8"))
+                if msg.get("type") == "SYN-ACK" and msg.get("filename") == filename:
+                    ack = {"type": "ACK", "room": room, "filename": filename}
+                    self.udp_sock.sendto(json.dumps(ack).encode("utf-8"), (self.host, self.udp_port))
+                    handshake_done = True
+                    print(f"[UDP Download Handshake] Established with {self.host}:{self.udp_port}")
+                    break
+            except socket.timeout:
+                continue
+        if not handshake_done: 
+            print("[UDP] Download handshake failed")
             return None
-        if len(parts) != 2 or parts[0] != "OK":
-            return None
-        size = int(parts[1])
-        remaining = size
-        chunks: list[bytes] = []
-        while remaining > 0:
-            chunk = self.file.read(min(4096, remaining))
-            if not chunk:
-                break
-            chunks.append(chunk)
-            remaining -= len(chunk)
-        if remaining != 0:
-            return None
-        return b"".join(chunks)
+        
+        receiver = None
+        max_wait = 5.0
+        start_t = time.time()
+        
+        while True:
+            try:
+                self.udp_sock.settimeout(1.0)
+                resp, _ = self.udp_sock.recvfrom(65536)
+                msg = json.loads(resp.decode("utf-8"))
+                
+                if msg.get("type") == "DATA" and msg.get("filename") == filename:
+                    if receiver is None:
+                        receiver = FileReceiver(msg["total"])
+                    
+                    receiver.add_chunk(msg["seq"], bytes.fromhex(msg["payload_hex"]))
+                    
+                    # Send ACK
+                    ack = {
+                        "type": "ACK", "room": room, "filename": filename,
+                        "ack": receiver.get_ack_seq(), "rwnd": receiver.rwnd
+                    }
+                    self.udp_sock.sendto(json.dumps(ack).encode("utf-8"), (self.host, self.udp_port))
+                    
+                    if receiver.is_complete():
+                        # Initiation termination
+                        fin = {"type": "FIN", "room": room, "filename": filename}
+                        self.udp_sock.sendto(json.dumps(fin).encode("utf-8"), (self.host, self.udp_port))
+                        
+                        # Wait for FIN-ACK
+                        start_fa = time.time()
+                        while time.time() - start_fa < 2:
+                            try:
+                                self.udp_sock.settimeout(0.5)
+                                resp, _ = self.udp_sock.recvfrom(65536)
+                                msg = json.loads(resp.decode("utf-8"))
+                                if msg.get("type") == "FIN-ACK":
+                                    print(f"[UDP Termination] Session closed for {filename}")
+                                    break
+                            except: pass
+                        
+                        return receiver.finalize_to_bytes()
+                
+                elif msg.get("type") == "ERROR":
+                    print(f"[UDP] Download error: {msg.get('msg')}")
+                    return None
+                    
+            except socket.timeout:
+                if receiver is None and time.time() - start_t > max_wait:
+                    print("[UDP] Download request timed out")
+                    return None
+                if receiver and receiver.is_complete(): # Insurance
+                    return receiver.finalize_to_bytes()
+                # Re-send DOWNLOAD request if we haven't received anything yet
+                if receiver is None:
+                    self.udp_sock.sendto(json.dumps(pkt).encode("utf-8"), (self.host, self.udp_port))
 
     def close(self):
-        try:
-            self._send_line("BYE")
-        except Exception:
-            pass
-        try:
-            self.file.close()
-        except Exception:
-            pass
-        try:
-            self.sock.close()
-        except Exception:
-            pass
+        try: self._send_tcp_line("BYE")
+        except: pass
+        try: self.file.close()
+        except: pass
+        try: self.tcp_sock.close()
+        except: pass
+        try: self.udp_sock.close()
+        except: pass
+
+# Aliases for backward compatibility in frontend if needed
+TcpFileClient = SyncroXFileClient
+UdpFileClient = SyncroXFileClient
