@@ -1,0 +1,7 @@
+2026-01-06 17:33:01,096 Connected to 127.0.0.1:9011 as Mehedi
+2026-01-06 17:33:01,099 Received DOC header: DOC 4444 python 48 server
+2026-01-06 17:33:01,099 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-06 17:33:01,099 Received DOC header: DOC 4444 python 48 server
+2026-01-06 17:33:01,100 Put doc update in queue. Lang: python, Size: 48. Queue size: 2
+2026-01-06 17:33:01,102 Received DOC header: DOC 4444 python 48 server
+2026-01-06 17:33:01,104 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
