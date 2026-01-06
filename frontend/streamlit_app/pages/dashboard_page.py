@@ -423,13 +423,68 @@ if HAS_PLOTTING:
                             st.markdown("**🔧 Filter by Algorithm**")
                             algo_choice = st.selectbox(
                                 "Select algorithm",
-                                ["All algorithms"] + algos,
+                                ["All algorithms", "Reno", "Tahoe"],
                                 help="Filter metrics by congestion control algorithm"
                             )
                             if algo_choice != "All algorithms":
-                                df = df[df["algo"] == algo_choice].copy()
+                                df = df[df["algo"].str.lower() == algo_choice.lower()].copy()
                         else:
                             algo_choice = "All algorithms"
+
+                    # ---------- NEW: Comparison Mode Toggle ----------
+                    st.markdown("---")
+                    use_comparison = st.toggle("🚀 **Enable Comparison View**", help="Align multiple runs to T=0 for side-by-side analysis", value=True)
+                    
+                    if use_comparison:
+                        st.markdown("### 📊 Side-by-Side Algorithm Comparison")
+                        
+                        # Gather data for all algos in the current room
+                        comp_data = {}
+                        for a in ["reno", "tahoe"]:
+                            a_df = pd.read_csv(fp)
+                            a_df = a_df[a_df["algo"].str.lower() == a].copy()
+                            if not a_df.empty:
+                                # Align to own start
+                                a_df["rel_ts"] = a_df["ts"] - a_df["ts"].min()
+                                comp_data[a] = a_df
+
+                        if len(comp_data) >= 1:
+                            col_comp1, col_comp2 = st.columns([2, 1])
+                            
+                            with col_comp1:
+                                fig_comp, ax_comp = plt.subplots(figsize=(10, 6))
+                                colors = {"reno": "#60a5fa", "tahoe": "#f59e0b"}
+                                
+                                for algo, adf in comp_data.items():
+                                    ax_comp.step(adf["rel_ts"], adf["cwnd"], label=f"{algo.upper()} CWND", where='post', linewidth=2.5, color=colors.get(algo, "#888"))
+                                    if "ssthresh" in adf.columns and adf["ssthresh"].max() > 0:
+                                        ax_comp.step(adf["rel_ts"], adf["ssthresh"], '--', label=f"{algo.upper()} ssthresh", where='post', alpha=0.5, color=colors.get(algo, "#888"))
+                                
+                                ax_comp.set_title("Congestion Window Comparison (Normalized Time)", fontweight='bold', fontsize=14)
+                                ax_comp.set_xlabel("Time Since Start (s)", fontweight='bold')
+                                ax_comp.set_ylabel("CWND (packets)", fontweight='bold')
+                                ax_comp.legend(loc='upper right')
+                                ax_comp.grid(True, alpha=0.2)
+                                st.pyplot(fig_comp)
+                                plt.close(fig_comp)
+                            
+                            with col_comp2:
+                                st.markdown("**Throughput Analysis**")
+                                stats = []
+                                for algo, adf in comp_data.items():
+                                    duration = adf["ts"].max() - adf["ts"].min()
+                                    if duration > 0:
+                                        total_bytes = adf[adf["event"] == "ACK"]["bytes"].sum()
+                                        tput = (total_bytes / 1024.0) / duration # KB/s
+                                        stats.append({"Algo": algo.upper(), "KB/s": f"{tput:.1f}", "Loss Events": len(adf[adf["event"] == "TIMEOUT"])})
+                                
+                                if stats:
+                                    st.table(stats)
+                                    st.caption("Note: Reno's Fast Recovery usually results in higher avg KB/s.")
+                        else:
+                            st.warning("Not enough data for comparison. Try uploading files using both Reno and Tahoe.")
+                        
+                        st.markdown("---")
                     
                     if file_choice != "All files" or algo_choice != "All algorithms":
                         filter_info = []
