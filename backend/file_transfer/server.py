@@ -2,11 +2,22 @@ import socket
 import threading
 import json
 import datetime
-import time
 from pathlib import Path
 import os
+import sys
+
+# Add project root to path for imports
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 # --- Configuration ---
+from config import SERVER_HOST, ROOM_MGMT_PORT
+from backend.room_mgmt.client import RoomMgmtClient
+
+# Global room mgmt client
+room_client = RoomMgmtClient(host=SERVER_HOST, port=ROOM_MGMT_PORT)
+
 HOST = "0.0.0.0"
 TCP_PORT = 9010
 UDP_PORT = 9011
@@ -17,18 +28,10 @@ ROOT_UPLOAD_DIR = BASE_DIR / "data" / "uploads"
 os.makedirs(ROOT_UPLOAD_DIR, exist_ok=True)
 
 from typing import List, Tuple, Optional, Union
-try:
-    from .protocol import CHUNK_SIZE, FileReceiver, FileSender, FileTransferMetrics
-except (ImportError, ValueError):
-    from protocol import CHUNK_SIZE, FileReceiver, FileSender, FileTransferMetrics
+import uuid
+import base64
 
-METRICS_DIR = BASE_DIR / "data" / "metrics"
-METRICS_DIR.mkdir(parents=True, exist_ok=True)
-
-try:
-    from config import SYNCROX_LOSS_PROB
-except ImportError:
-    SYNCROX_LOSS_PROB = 0.0
+from backend.file_transfer.protocol import FileReceiver
 
 def get_room_dir(room: str) -> Optional[Path]:
     """Validate room code and return its directory path."""
@@ -81,9 +84,14 @@ def handle_tcp_client(conn: socket.socket, addr):
                     conn.sendall(b"ERROR LIST needs room code\n")
                     continue
                 room = parts[1]
+                # Validate room exists in central service
+                if not room_client.room_exists(room):
+                    conn.sendall(b"ERROR RoomNotFound\n")
+                    continue
+                
                 room_dir = get_room_dir(room)
                 if room_dir is None:
-                    conn.sendall(b"ERROR Invalid room code\n")
+                    conn.sendall(b"ERROR Invalid room configuration\n")
                     continue
 
                 files = []
@@ -105,9 +113,14 @@ def handle_tcp_client(conn: socket.socket, addr):
                     conn.sendall(b"ERROR DOWNLOAD needs room and filename\n")
                     continue
                 room = parts[1]
+                # Validate room exists in central service
+                if not room_client.room_exists(room):
+                    conn.sendall(b"ERROR RoomNotFound\n")
+                    continue
+
                 room_dir = get_room_dir(room)
                 if room_dir is None:
-                    conn.sendall(b"ERROR Invalid room code\n")
+                    conn.sendall(b"ERROR Invalid room configuration\n")
                     continue
 
                 filename = " ".join(parts[2:])
@@ -149,16 +162,15 @@ def tcp_server():
             threading.Thread(target=handle_tcp_client, args=(conn, addr), daemon=True).start()
 
 # --- UDP Server Logic ---
+# The FileReceiver class is imported from .protocol
 
 def udp_server():
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_sock.bind((HOST, UDP_PORT))
     print(f"[UDP FILE] Server listening on {HOST}:{UDP_PORT}")
     
-    # State tracking
-    receivers = {} # (room, filename, addr) -> FileReceiver
-    senders = {}   # (room, filename, addr) -> (FileSender, next_seq, metrics)
-    pending_downloads = {} # (room, filename, addr) -> {room, filename, algo}
+    # (addr) -> { "session_id": id, "room": r, "filename": f, "receiver": FileReceiver }
+    sessions = {} 
 
     while True:
         try:
@@ -169,127 +181,92 @@ def udp_server():
                 continue
 
             msg_type = msg.get("type")
-            room = msg.get("room")
-            filename = msg.get("filename")
-            key = (room, filename, addr)
 
             if msg_type == "SYN":
-                print(f"[UDP Handshake] SYN from {addr} for {filename}")
-                resp = {"type": "SYN-ACK", "room": room, "filename": filename}
+                room = msg.get("room")
+                filename = msg.get("filename")
+                
+                if not room_client.room_exists(room):
+                    print(f"[UDP FILE] SYN Rejected: Room {room} not found")
+                    continue
+                
+                session_id = str(uuid.uuid4())[:8]
+                sessions[addr] = {
+                    "session_id": session_id,
+                    "room": room,
+                    "filename": filename,
+                    "receiver": None,
+                    "handshake_step": "SYN-ACK_SENT"
+                }
+                
+                resp = {
+                    "type": "SYN-ACK",
+                    "filename": filename,
+                    "session_id": session_id
+                }
                 server_sock.sendto(json.dumps(resp).encode("utf-8"), addr)
+                print(f"[UDP FILE] SYN Received from {addr}: Room={room}, File={filename} -> Session={session_id}")
 
             elif msg_type == "ACK":
-                # Check if it's a handshake ACK or a data ACK
-                if "ack_seq" in msg:
-                    # Data ACK (for downloads)
-                    if key in senders:
-                        sender, _, metrics = senders[key]
-                        ack_val = msg["ack"]
-                        rwnd = msg.get("rwnd", 32)
-                        sent_t = sender.sent_times.get(ack_val)
-                        if sent_t is None:
-                            sent_t = sender.sent_times.get(metrics.last_ack + 1, time.time())
-                        
-                        rtt_ms = (time.time() - sent_t) * 1000.0
-                        
-                        metrics.on_ack(ack_val, CHUNK_SIZE, rtt_ms)
-                else:
-                    # Handshake ACK
-                    if key in pending_downloads:
-                        d_info = pending_downloads.pop(key)
-                        room = d_info["room"]
-                        filename = d_info["filename"]
-                        algo = d_info["algo"]
-                        
-                        room_dir = get_room_dir(room)
-                        if not room_dir: continue
-                        path = room_dir / filename
-                        if not path.exists():
-                            server_sock.sendto(json.dumps({"type": "ERROR", "msg": "NotFound"}).encode("utf-8"), addr)
-                            continue
-                        
-                        with open(path, "rb") as f:
-                            data = f.read()
-                        
-                        metrics = FileTransferMetrics(room, filename, METRICS_DIR, algo=algo, direction="download")
-                        sender = FileSender(room, filename, data, addr, server_sock, metrics, loss_prob=SYNCROX_LOSS_PROB)
-                        senders[key] = (sender, 1, metrics)
-                        
-                        print(f"[UDP Download Handshake] Established for {filename}, starting transmission")
-                        
-                        # Final confirmation ACK to client
-                        confirm = {"type": "ACK", "room": room, "filename": filename}
-                        server_sock.sendto(json.dumps(confirm).encode("utf-8"), addr)
-
-                        def run_sender(k, s, m):
-                            next_s = 1
-                            while m.last_ack < s.total_packets:
-                                next_s = max(next_s, m.last_ack + 1)
-                                next_s = s.send_window(next_s, m.last_ack + 1, 32)
-                                time.sleep(0.01) # Avoid tight loop
-                                base = m.last_ack + 1
-                                if base in s.sent_times:
-                                    new_next, ok = s.handle_timeout(base, 5)
-                                else:
-                                    new_next, ok = (-1, True)
-                                if not ok: break
-                                if new_next != -1: next_s = new_next
-                            m.close()
-                            if k in senders: del senders[k]
-
-                        threading.Thread(target=run_sender, args=(key, sender, metrics), daemon=True).start()
-                    else:
-                        print(f"[UDP Handshake] ACK from {addr} for {filename}")
+                session_id = msg.get("session_id")
+                if addr in sessions and sessions[addr]["session_id"] == session_id:
+                    sessions[addr]["handshake_step"] = "READY"
+                    print(f"[UDP FILE] Handshake complete for session {session_id} from {addr}")
 
             elif msg_type == "DATA":
+                session_id = msg.get("session_id")
+                if addr not in sessions or sessions[addr]["session_id"] != session_id:
+                    continue
+                
+                sess = sessions[addr]
+                room = msg["room"]
+                filename = msg["filename"]
                 seq = msg["seq"]
                 total = msg["total"]
-                payload = bytes.fromhex(msg["payload_hex"])
                 
-                room_dir = get_room_dir(room)
-                if not room_dir: continue
+                # Dynamic initialization of receiver on first data packet or ACK
+                if sess["receiver"] is None:
+                    sess["receiver"] = FileReceiver(total_packets=total)
                 
-                if key not in receivers:
-                    receivers[key] = FileReceiver(total)
+                try:
+                    payload = base64.b64decode(msg["payload_b64"])
+                except:
+                    continue
                 
-                receiver = receivers[key]
+                receiver = sess["receiver"]
                 receiver.add_chunk(seq, payload)
                 
+                # Send Cumulative ACK
                 ack = {
-                    "type": "ACK", "room": room, "filename": filename, 
-                    "ack": receiver.get_ack_seq(), "rwnd": receiver.rwnd
+                    "type": "ACK", 
+                    "room": room, 
+                    "filename": filename, 
+                    "session_id": session_id,
+                    "ack": receiver.get_ack_seq(),
+                    "rwnd": receiver.rwnd
                 }
                 server_sock.sendto(json.dumps(ack).encode("utf-8"), addr)
                 
                 if receiver.is_complete():
-                    receiver.finalize_to_file(room_dir / filename)
-                    print(f"[UDP FILE] Upload complete: {filename} in {room} from {addr}")
-                    # Initiation termination
-                    fin = {"type": "FIN", "room": room, "filename": filename}
-                    server_sock.sendto(json.dumps(fin).encode("utf-8"), addr)
-                    del receivers[key]
-
-            elif msg_type == "DOWNLOAD":
-                print(f"[UDP Download] Request from {addr} for {filename}")
-                room_dir = get_room_dir(room)
-                if not room_dir: continue
-                path = room_dir / filename
-                if not path.exists():
-                    server_sock.sendto(json.dumps({"type": "ERROR", "msg": "NotFound"}).encode("utf-8"), addr)
-                    continue
-                
-                # Start handshake
-                pending_downloads[key] = {"room": room, "filename": filename, "algo": msg.get("algo", "reno")}
-                resp = {"type": "SYN-ACK", "room": room, "filename": filename}
-                server_sock.sendto(json.dumps(resp).encode("utf-8"), addr)
-
-            elif msg_type == "FIN":
-                print(f"[UDP Termination] FIN from {addr} for {filename}")
-                resp = {"type": "FIN-ACK", "room": room, "filename": filename}
-                server_sock.sendto(json.dumps(resp).encode("utf-8"), addr)
+                    room_dir = get_room_dir(room)
+                    if room_dir:
+                        receiver.finalize_to_file(room_dir / filename)
+                        print(f"[UDP FILE] Saved {filename} in room {room} from {addr} (Session={session_id})")
+                        
+                        # Initiate termination
+                        fin = {
+                            "type": "FIN",
+                            "filename": filename,
+                            "session_id": session_id
+                        }
+                        server_sock.sendto(json.dumps(fin).encode("utf-8"), addr)
+                        sess["handshake_step"] = "FIN_SENT"
 
             elif msg_type == "FIN-ACK":
-                print(f"[UDP Termination] Session closed for {filename} with {addr}")
+                session_id = msg.get("session_id")
+                if addr in sessions and sessions[addr]["session_id"] == session_id:
+                    print(f"[UDP FILE] Session {session_id} terminated gracefully")
+                    del sessions[addr]
 
         except Exception as e:
             print(f"[UDP FILE] Error: {e}")

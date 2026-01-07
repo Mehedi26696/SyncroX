@@ -12,7 +12,7 @@ if PROJECT_ROOT not in sys.path:
 
 import streamlit as st
 from PIL import Image
-from config import SERVER_HOST, CHAT_PORT, FILE_PORT, COLLAB_PORT, EXEC_PORT
+from config import SERVER_HOST, CHAT_PORT, FILE_PORT, COLLAB_PORT, EXEC_PORT, ROOM_MGMT_PORT
 
 try:
     import pandas as pd
@@ -23,25 +23,27 @@ try:
     matplotlib.use('Agg')
     plt.style.use('default')
     
-    # Configure matplotlib defaults for professional white background
+    # Configure matplotlib defaults for professional technical background
     plt.rcParams.update({
         'figure.facecolor': 'white',
-        'axes.facecolor': 'white',
-        'axes.edgecolor': '#333333',
-        'axes.labelcolor': '#1f2937',
-        'xtick.color': '#4b5563',
-        'ytick.color': '#4b5563',
-        'text.color': '#1f2937',
-        'grid.color': '#d1d5db',
-        'grid.alpha': 0.5,
-        'lines.linewidth': 2.5,
-        'font.size': 10,
-        'axes.titlesize': 12,
-        'axes.labelsize': 10,
-        'xtick.labelsize': 9,
-        'ytick.labelsize': 9,
-        'legend.fontsize': 9,
-        'figure.titlesize': 13,
+        'axes.facecolor': '#f8fafc',
+        'axes.edgecolor': '#475569',
+        'axes.labelcolor': '#1e293b',
+        'xtick.color': '#475569',
+        'ytick.color': '#475569',
+        'text.color': '#1e293b',
+        'grid.color': '#cbd5e1',
+        'grid.alpha': 0.8,
+        'grid.linestyle': ':',
+        'lines.linewidth': 1.8,
+        'font.family': 'monospace',
+        'font.size': 9,
+        'axes.titlesize': 11,
+        'axes.labelsize': 9,
+        'xtick.labelsize': 8,
+        'ytick.labelsize': 8,
+        'legend.fontsize': 8,
+        'figure.titlesize': 12,
     })
     
     HAS_PLOTTING = True
@@ -74,12 +76,13 @@ st.markdown("""
     }
     
     .stApp {
-        background-color: #ebfbee;
+        background-color: #f1f5f9;
+        color: #1e293b;
     }
     
     .main {
-        background-color: #ebfbee;
-        padding-top: 2rem;
+        background-color: #f1f5f9;
+        padding-top: 1rem;
     }
     
     [data-testid="stSidebar"] {
@@ -96,18 +99,25 @@ st.markdown("""
     }
     
     h1, h2, h3, h4, h5, h6 {
-        font-family: 'Raleway', sans-serif !important;
-        color: #087f5b !important;
+        font-family: 'JetBrains Mono', 'Roboto Mono', monospace !important;
+        color: #0f172a !important;
+        text-transform: uppercase;
+        letter-spacing: -0.5px;
     }
     
-    h1 { font-size: 3rem !important; }
-    h2 { font-size: 2.5rem !important; }
-    h3 { font-size: 2rem !important; }
-    h4 { font-size: 1.5rem !important; }
+    h1 { font-size: 2.2rem !important; border-bottom: 3px solid #0f172a; padding-bottom: 0.5rem; margin-bottom: 1.5rem !important; }
+    h2 { font-size: 1.8rem !important; border-bottom: 2px solid #334155; padding-bottom: 0.3rem; }
+    h3 { font-size: 1.4rem !important; }
+    h4 { font-size: 1.1rem !important; }
 
-    p, div, span, label {
+    p, div, span, label, table, tr, td {
         font-family: 'Raleway', sans-serif !important;
-        color: #2b8a3e;
+        color: #334155;
+    }
+
+    /* Data display styling */
+    span.stMetricValue, .stMetric div, [data-testid="stMetricValue"], code, pre {
+        font-family: 'JetBrains Mono', 'Roboto Mono', monospace !important;
     }
 
     /* Sidebar headings */
@@ -229,17 +239,26 @@ st.markdown("""
     
     /* Metric cards enhancement */
     [data-testid="stMetricValue"] {
-        font-size: 2.8rem !important;
+        font-size: 2.2rem !important;
         font-weight: 700 !important;
-        color: #087f5b !important;
+        color: #0f172a !important;
+        letter-spacing: -1px;
     }
     
     [data-testid="stMetricLabel"] {
-        font-size: 1.3rem !important;
-        font-weight: 500 !important;
-        color: #2b8a3e !important;
+        font-size: 0.85rem !important;
+        font-weight: 700 !important;
+        color: #475569 !important;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 1px;
+    }
+
+    [data-testid="stMetric"] {
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 4px !important;
+        padding: 1rem !important;
+        box-shadow: none !important;
     }
     
     /* Server status card */
@@ -343,32 +362,34 @@ def check_tcp_server(host: str, port: int, timeout: float = 0.5):
         return False, None, str(e)
 
 
-# ---- Server Status Section ----
-st.markdown('<div class="section-header"><h2>🖥️ Server Status</h2></div>', unsafe_allow_html=True)
-
-services = [
-    ("💬 Chat Server", "Real-time messaging over TCP", SERVER_HOST, CHAT_PORT),
-    ("📁 File Server", "File transfer with congestion control", SERVER_HOST, FILE_PORT),
-    ("🤝 Collab Server", "Shared code editor and sync", SERVER_HOST, COLLAB_PORT),
-    ("⚙️ Exec Server", "Docker-sandboxed code execution", SERVER_HOST, EXEC_PORT),
-]
-
-cols = st.columns(2)
-for i, (name, desc, h, p) in enumerate(services):
-    with cols[i % 2]:
-        ok, latency_ms, err = check_tcp_server(h, p, timeout=0.7)
-        
-        with st.container():
-            st.markdown(f"**{name}**")
-            st.caption(f"`{h}:{p}` • {desc}")
+# ---- Server Status Section (Collapsed by default) ----
+with st.expander("System Server Status", expanded=False):
+    st.markdown('<div class="section-header"><h4>Detailed Service Monitoring</h4></div>', unsafe_allow_html=True)
+    
+    services = [
+        ("Chat Server", "Real-time messaging over TCP", SERVER_HOST, CHAT_PORT),
+        ("File Server", "File transfer with congestion control", SERVER_HOST, FILE_PORT),
+        ("Collab Server", "Shared code editor and sync", SERVER_HOST, COLLAB_PORT),
+        ("Exec Server", "Docker-sandboxed code execution", SERVER_HOST, EXEC_PORT),
+        ("Room Mgmt", "Central room authority", SERVER_HOST, ROOM_MGMT_PORT),
+    ]
+    
+    cols = st.columns(2)
+    for i, (name, desc, h, p) in enumerate(services):
+        with cols[i % 2]:
+            ok, latency_ms, err = check_tcp_server(h, p, timeout=0.7)
             
-            if ok:
-                st.success(f"🟢 Online • {latency_ms:.1f}ms latency", icon="✅")
-            else:
-                st.error("🔴 Offline", icon="❌")
-                if err:
-                    with st.expander("🔍 Error details"):
-                        st.code(err, language="text")
+            with st.container():
+                st.markdown(f"**{name}**")
+                st.caption(f"`{h}:{p}` • {desc}")
+                
+                if ok:
+                    st.success(f"Online • {latency_ms:.1f}ms latency")
+                else:
+                    st.error("Offline")
+                    if err:
+                        with st.expander("Error details"):
+                            st.code(err, language="text")
 
 st.markdown("---")
 
@@ -456,15 +477,15 @@ if HAS_PLOTTING:
                                 colors = {"reno": "#60a5fa", "tahoe": "#f59e0b"}
                                 
                                 for algo, adf in comp_data.items():
-                                    ax_comp.step(adf["rel_ts"], adf["cwnd"], label=f"{algo.upper()} CWND", where='post', linewidth=2.5, color=colors.get(algo, "#888"))
+                                    ax_comp.step(adf["rel_ts"], adf["cwnd"], label=f"{algo.upper()} CWND", where='post', linewidth=1.5, color=colors.get(algo, "#888"), marker='.', markersize=4)
                                     if "ssthresh" in adf.columns and adf["ssthresh"].max() > 0:
-                                        ax_comp.step(adf["rel_ts"], adf["ssthresh"], '--', label=f"{algo.upper()} ssthresh", where='post', alpha=0.5, color=colors.get(algo, "#888"))
+                                        ax_comp.step(adf["rel_ts"], adf["ssthresh"], ':', label=f"{algo.upper()} ssthresh", where='post', alpha=0.7, color=colors.get(algo, "#888"))
                                 
-                                ax_comp.set_title("Congestion Window Comparison (Normalized Time)", fontweight='bold', fontsize=14)
-                                ax_comp.set_xlabel("Time Since Start (s)", fontweight='bold')
-                                ax_comp.set_ylabel("CWND (packets)", fontweight='bold')
-                                ax_comp.legend(loc='upper right')
-                                ax_comp.grid(True, alpha=0.2)
+                                ax_comp.set_title("CWND DYNAMICS: TAHOE vs RENO", fontweight='bold')
+                                ax_comp.set_xlabel("TIME (S)")
+                                ax_comp.set_ylabel("CWND (PKTS)")
+                                ax_comp.legend(loc='upper right', frameon=True, facecolor='white', edgecolor='#cbd5e1')
+                                ax_comp.grid(True)
                                 st.pyplot(fig_comp)
                                 plt.close(fig_comp)
                             
@@ -596,53 +617,32 @@ if HAS_PLOTTING:
                         
                         fig3, ax3 = plt.subplots(figsize=(14, 7))
                         
-                        # Plot CWND with gradient effect
+                        # Plot CWND 
                         ax3.plot(
                             df_plot["round"],
                             df_plot["cwnd"],
                             marker="o",
-                            color="#60a5fa",
-                            linewidth=3,
-                            label="Congestion Window (CWND)",
-                            markersize=4,
-                            markeredgecolor='white',
-                            markeredgewidth=0.5,
+                            color="#2563eb",
+                            linewidth=1.5,
+                            label="CWND",
+                            markersize=3,
                         )
                         
                         # Plot ssthresh
                         ax3.plot(
                             df_plot["round"],
                             df_plot["ssthresh"],
-                            color="#ef4444",
+                            color="#dc2626",
                             linestyle="--",
-                            linewidth=2.5,
-                            label="Slow Start Threshold (ssthresh)",
-                            alpha=0.9,
-                        )
-                        
-                        # Shade regions with better colors
-                        ax3.fill_between(
-                            df_plot["round"],
-                            0,
-                            df_plot["ssthresh"],
-                            alpha=0.15,
-                            color="#10b981",
-                            label="Slow Start Region",
-                        )
-                        ax3.fill_between(
-                            df_plot["round"],
-                            df_plot["ssthresh"],
-                            df_plot["cwnd"].max() * 1.15,
-                            alpha=0.15,
-                            color="#f59e0b",
-                            label="Congestion Avoidance Region",
+                            linewidth=1.2,
+                            label="SSTHRESH",
                         )
                         
                         current_algo = df_plot["algo"].iloc[0] if "algo" in df_plot.columns else "unknown"
                         algo_label = current_algo.upper()
                         
                         # Build comprehensive title
-                        title_parts = [f"TCP {algo_label} Congestion Control Dynamics"]
+                        title_parts = [f"PROTOCOL ANALYSIS: {algo_label}"]
                         if file_choice != "All files":
                             title_parts.append(file_choice[:40])
                         

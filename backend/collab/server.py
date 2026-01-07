@@ -4,6 +4,18 @@ from collections import defaultdict
 from pathlib import Path
 import os
 import time
+import sys
+
+# Add project root to path for imports
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from config import SERVER_HOST, ROOM_MGMT_PORT
+from backend.room_mgmt.client import RoomMgmtClient
+
+# Global room mgmt client
+room_client = RoomMgmtClient(host=SERVER_HOST, port=ROOM_MGMT_PORT)
 
 HOST = "0.0.0.0"
 PORT = 9011  # collab server port
@@ -107,6 +119,20 @@ def broadcast_doc(
             pass
 
 
+def remove_conn_from_all_rooms(conn):
+    """Ensure a connection is removed from any rooms they were previously in."""
+    empty = []
+    with lock:
+        for r, conns in room_clients.items():
+            if conn in conns:
+                conns.discard(conn)
+                if not conns:
+                    empty.append(r)
+        for r in empty:
+            room_clients.pop(r, None)
+            room_user_last_set.pop(r, None)
+
+
 def handle_client(conn: socket.socket, addr):
     print(f"[COLLAB] New connection from {addr}")
     f = conn.makefile("rwb")
@@ -150,7 +176,13 @@ def handle_client(conn: socket.socket, addr):
                     send_line(conn, "ERROR Invalid room code")
                     continue
 
+                # Validate room exists in central service
+                if not room_client.room_exists(room):
+                    send_line(conn, f"ERROR RoomNotFound {room}")
+                    continue
+
                 doc_key = get_doc_key(room, lang)
+                remove_conn_from_all_rooms(conn)
                 with lock:
                     # load or create doc for this room+language
                     if doc_key not in lang_docs:
@@ -281,14 +313,9 @@ def handle_client(conn: socket.socket, addr):
 
     finally:
         print(f"[COLLAB] Connection closed from {addr}")
+        remove_conn_from_all_rooms(conn)
         with lock:
             clients.pop(conn, None)
-            for room, members in list(room_clients.items()):
-                if conn in members:
-                    members.remove(conn)
-                    if not members:
-                        room_clients.pop(room, None)
-                        room_user_last_set.pop(room, None)
         try:
             conn.close()
         except OSError:

@@ -14,7 +14,7 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from backend.collab.client import TcpCollabClient
 from backend.code_exec.client import TcpExecClient
-from backend.exec_history import get_history_manager
+from backend.code_exec.exec_history import get_history_manager
 from PIL import Image
 from config import SERVER_HOST, COLLAB_PORT, EXEC_PORT
 

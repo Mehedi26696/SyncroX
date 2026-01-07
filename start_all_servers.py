@@ -16,6 +16,7 @@ SERVERS = [
     ("File Transfer Server", BACKEND_DIR / "file_transfer" / "server.py"),
     ("Collab Server", BACKEND_DIR / "collab" / "server.py"),
     ("Code Exec Server", BACKEND_DIR / "code_exec" / "server.py"),
+    ("Room MGMT Server", BACKEND_DIR / "room_mgmt" / "server.py"),
 ]
 
 def start_servers():
