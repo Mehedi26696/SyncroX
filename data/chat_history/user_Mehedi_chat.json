@@ -1,8 +1,8 @@
 {
   "username": "Mehedi",
-  "last_updated": 1767784308.8719883,
-  "last_updated_readable": "2026-01-07 17:11:48",
-  "total_messages": 2,
+  "last_updated": 1767784566.7355523,
+  "last_updated_readable": "2026-01-07 17:16:06",
+  "total_messages": 3,
   "messages": [
     {
       "id": "0000_Mehedi_1767784195916",
@@ -20,6 +20,15 @@
       "room": "0000",
       "username": "Mehedi",
       "message": "I am here",
+      "type": "text"
+    },
+    {
+      "id": "0000_Mehedi_1767784566732",
+      "timestamp": 1767784566.7321079,
+      "datetime": "2026-01-07 17:16:06",
+      "room": "0000",
+      "username": "Mehedi",
+      "message": "😂",
       "type": "text"
     }
   ]
