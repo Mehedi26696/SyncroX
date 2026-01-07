@@ -6,15 +6,35 @@ import string
 import time
 import sys
 import os
+import base64
 from collections import defaultdict, deque
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from chat_history import get_chat_history_manager
 from datetime import datetime
+import base64
+
+# Add project root to path for imports
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from backend.tcp_chat.chat_history import get_chat_history_manager
+from config import SERVER_HOST, ROOM_MGMT_PORT
+from backend.room_mgmt.client import RoomMgmtClient
+
+# Global room mgmt client
+room_client = RoomMgmtClient(host=SERVER_HOST, port=ROOM_MGMT_PORT)
 
 HOST = "0.0.0.0"
 PORT = 9009
+
+# Directory for CDN (static images/files) - moved to main data folder
+CDN_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "data", "cdn"
+)
+os.makedirs(CDN_DIR, exist_ok=True)
 
 # Initialize chat history manager
 chat_history = get_chat_history_manager()
@@ -34,15 +54,6 @@ msg_counters: dict[str, int] = defaultdict(int)
 lock = threading.Lock()
 
 
-def generate_room_code() -> str:
-    """Generate a unique 4-digit room code."""
-    while True:
-        code = "".join(random.choices(string.digits, k=4))
-        with lock:
-            if code not in rooms:
-                return code
-
-
 def send_line(conn: socket.socket, text: str):
     try:
         conn.sendall((text + "\n").encode("utf-8"))
@@ -59,6 +70,19 @@ def broadcast(room_code: str, text: str, exclude: socket.socket | None = None):
         if sock is exclude:
             continue
         send_line(sock, text)
+
+
+def remove_conn_from_all_rooms(conn):
+    """Ensure a connection is removed from any rooms they were previously in."""
+    empty = []
+    with lock:
+        for r, conns in rooms.items():
+            if conn in conns:
+                conns.discard(conn)
+                if not conns:
+                    empty.append(r)
+        for r in empty:
+            del rooms[r]
 
 
 def handle_client(conn: socket.socket, addr):
@@ -97,22 +121,22 @@ def handle_client(conn: socket.socket, addr):
             cmd = cmd.upper()
 
             if cmd == "CREATE_ROOM":
-                room_code = generate_room_code()
-                with lock:
-                    rooms[room_code].add(conn)
-                room_joined = room_code
-                send_line(conn, f"ROOM {room_code}")
-                print(f"[+] {username} created and joined room {room_code}")
+                # Deprecated: Room creation should go through Room MGMT service
+                send_line(conn, "ERROR Use Room Management Service to create rooms")
 
             elif cmd == "JOIN_ROOM":
                 if not rest:
                     send_line(conn, "ERROR JOIN_ROOM requires room code")
                     continue
                 room_code = rest[0].strip()
+                
+                # Validate room exists in central service
+                if not room_client.room_exists(room_code):
+                    send_line(conn, f"ERROR RoomNotFound {room_code}")
+                    continue
+
+                remove_conn_from_all_rooms(conn)
                 with lock:
-                    # Auto-create room if it doesn't exist (for flexible room codes)
-                    if room_code not in rooms:
-                        rooms[room_code] = set()
                     rooms[room_code].add(conn)
                 room_joined = room_code
                 send_line(conn, f"OK Joined {room_code}")
@@ -120,7 +144,7 @@ def handle_client(conn: socket.socket, addr):
                 print(f"[+] {username} joined room {room_code}")
                 
                 # Save system message to history
-                chat_history.add_message(room_code, username, f"{username} joined the room", msg_type="system")
+                chat_history.add_message(room_code, "SYSTEM", f"{username} joined the room", msg_type="system")
 
             elif cmd == "MSG":
                 if room_joined is None:
@@ -165,7 +189,7 @@ def handle_client(conn: socket.socket, addr):
                     send_line(conn, "ERROR No image data")
                     continue
                 # Expecting: IMG_SEND <base64_string>
-                # We broadcast: IMG <room_code> <msg_id> <username> <base64_string>
+                # Instead of broadcasting base64, save to CDN and broadcast filename
                 img_data = rest[0]
                 
                 # Generate message ID and timestamp
@@ -176,11 +200,26 @@ def handle_client(conn: socket.socket, addr):
                     msg_counters[room_joined] += 1
                     msg_id = msg_counters[room_joined]
                 
-                broadcast(room_joined, f"IMG {room_joined} {msg_id} {ts_str} {username} {img_data}")
-                print(f"[ROOM {room_joined}] #{msg_id} @ {ts_str} {username} sent an image ({len(img_data)} chars)")
+                # Create unique filename
+                file_ext = "png" # Default, could be improved
+                filename = f"chat_img_{room_joined}_{msg_id}.{file_ext}"
+                filepath = os.path.join(CDN_DIR, filename)
                 
-                # Save image to history (store base64 data)
-                chat_history.add_message(room_joined, username, img_data, msg_type="image")
+                try:
+                    # Decode and save as binary file
+                    binary_img = base64.b64decode(img_data)
+                    with open(filepath, "wb") as f:
+                        f.write(binary_img)
+                    
+                    # Store only filename in logs and broadcast
+                    broadcast(room_joined, f"IMG {room_joined} {msg_id} {ts_str} {username} {filename}")
+                    print(f"[ROOM {room_joined}] #{msg_id} @ {ts_str} {username} sent image -> {filename}")
+                    
+                    # Save image metadata to history
+                    chat_history.add_message(room_joined, username, filename, msg_type="image")
+                except Exception as e:
+                    print(f"[!] Error saving image to CDN: {e}")
+                    send_line(conn, f"ERROR Failed to process image: {e}")
 
             elif cmd == "HISTORY":
                 # HISTORY [limit] - Get chat history for current room
@@ -199,15 +238,37 @@ def handle_client(conn: socket.socket, addr):
                 messages = chat_history.get_room_history(room_joined, limit=limit)
                 send_line(conn, f"HISTORY {room_joined} {len(messages)}")
                 for msg in messages:
+                    msg_id = msg.get("id", "unknown")
                     msg_type = msg.get("type", "text")
                     sender = msg.get("username", "unknown")
                     content = msg.get("message", "")
                     timestamp = msg.get("datetime", "").replace(" ", "_")  # Replace space to avoid parsing issues
-                    # Format: HIST <type> <timestamp> <sender> <content>
+                    # Format: HIST <id> <type> <timestamp> <sender> <content>
                     # Note: sender and content are separated by ": " which is parsed on client
-                    send_line(conn, f"HIST {msg_type} {timestamp} {sender} {content}")
+                    send_line(conn, f"HIST {msg_id} {msg_type} {timestamp} {sender} {content}")
                 send_line(conn, "HISTORY_END")
                 print(f"[+] Sent {len(messages)} history messages to {username} in room {room_joined}")
+
+            elif cmd == "GET_IMG":
+                # GET_IMG <filename>
+                if not rest:
+                    send_line(conn, "ERROR GET_IMG requires filename")
+                    continue
+                
+                filename = rest[0].strip()
+                filepath = os.path.join(CDN_DIR, filename)
+                
+                if not os.path.exists(filepath):
+                    send_line(conn, f"ERROR File not found: {filename}")
+                    continue
+                
+                try:
+                    with open(filepath, "rb") as f:
+                        data = f.read()
+                        b64_data = base64.b64encode(data).decode("utf-8")
+                        send_line(conn, f"IMG_DATA {filename} {b64_data}")
+                except Exception as e:
+                    send_line(conn, f"ERROR Could not read image: {e}")
 
             elif cmd == "LIST_ROOMS":
                 with lock:
@@ -226,15 +287,10 @@ def handle_client(conn: socket.socket, addr):
 
     finally:
         print(f"[-] Connection closed from {addr}")
+        remove_conn_from_all_rooms(conn)
         with lock:
             if conn in clients:
-                username = clients.pop(conn)
-            # remove from rooms
-            for code, members in list(rooms.items()):
-                if conn in members:
-                    members.remove(conn)
-                    if not members:
-                        rooms.pop(code, None)
+                del clients[conn]
         try:
             conn.close()
         except OSError:

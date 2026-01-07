@@ -25,6 +25,7 @@ SERVERS = [
     ("File Transfer Server", BACKEND_DIR / "file_transfer" / "server.py", 9010),
     ("Collab Server", BACKEND_DIR / "collab" / "server.py", 9011),
     ("Code Exec Server", BACKEND_DIR / "code_exec" / "server.py", 9012),
+    ("Room MGMT Server", BACKEND_DIR / "room_mgmt" / "server.py", 9013),
 ]
 
 def check_venv():
@@ -90,6 +91,7 @@ def start_servers():
     print("  - File Transfer: http://localhost:9010")
     print("  - Collab:        http://localhost:9011")
     print("  - Code Exec:     http://localhost:9012")
+    print("  - Room MGMT:    http://localhost:9013")
 
 def start_frontend():
     """Optionally start the Streamlit frontend"""

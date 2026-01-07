@@ -14,7 +14,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", "..", ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from backend.exec_history import get_history_manager
+from backend.code_exec.exec_history import get_history_manager
 
 # ============================================================================
 # EXECUTION OUTPUT / HISTORY PAGE

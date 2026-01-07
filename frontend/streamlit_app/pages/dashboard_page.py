@@ -12,7 +12,7 @@ if PROJECT_ROOT not in sys.path:
 
 import streamlit as st
 from PIL import Image
-from config import SERVER_HOST, CHAT_PORT, FILE_PORT, COLLAB_PORT, EXEC_PORT
+from config import SERVER_HOST, CHAT_PORT, FILE_PORT, COLLAB_PORT, EXEC_PORT, ROOM_MGMT_PORT
 
 try:
     import pandas as pd
@@ -371,6 +371,7 @@ with st.expander("System Server Status", expanded=False):
         ("File Server", "File transfer with congestion control", SERVER_HOST, FILE_PORT),
         ("Collab Server", "Shared code editor and sync", SERVER_HOST, COLLAB_PORT),
         ("Exec Server", "Docker-sandboxed code execution", SERVER_HOST, EXEC_PORT),
+        ("Room Mgmt", "Central room authority", SERVER_HOST, ROOM_MGMT_PORT),
     ]
     
     cols = st.columns(2)

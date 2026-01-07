@@ -12,7 +12,7 @@ from pathlib import Path
 
 # Default directory for storing execution history
 DEFAULT_HISTORY_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "data", "exec_history"
 )
 

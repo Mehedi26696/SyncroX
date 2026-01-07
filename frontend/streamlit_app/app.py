@@ -15,6 +15,8 @@ if CURRENT_DIR not in sys.path:
 import streamlit as st
 from PIL import Image
 from components.sidebar import render_sidebar
+from backend.room_mgmt.client import RoomMgmtClient
+from config import SERVER_HOST, ROOM_MGMT_PORT
 
 # ============================================================================
 # SYNCRO-X MAIN APP - WELCOME & ROOM MANAGEMENT
@@ -125,6 +127,12 @@ if "current_room" not in st.session_state:
 if "is_logged_in" not in st.session_state:
     st.session_state.is_logged_in = False
 
+# Initialize Room Mgmt Client
+if "room_mgmt_client" not in st.session_state:
+    st.session_state.room_mgmt_client = RoomMgmtClient(host=SERVER_HOST, port=ROOM_MGMT_PORT)
+
+room_mgmt = st.session_state.room_mgmt_client
+
 
 def render_footer():
     """Shared footer for all views"""
@@ -200,13 +208,15 @@ def render_welcome_page():
                 if not username.strip():
                     st.error("⚠️ Please enter your name first!")
                 else:
-                    import random
-                    room_code = f"{random.randint(1000, 9999)}"
-                    st.session_state.username = username.strip()
-                    st.session_state.current_room = room_code
-                    st.session_state.is_logged_in = True
-                    st.success(f"✅ Room **{room_code}** created! Redirecting...")
-                    st.rerun()
+                    room_code = room_mgmt.create_room(username.strip())
+                    if room_code:
+                        st.session_state.username = username.strip()
+                        st.session_state.current_room = room_code
+                        st.session_state.is_logged_in = True
+                        st.success(f"✅ Room **{room_code}** created! Redirecting...")
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to create room. Is the Room Management server running?")
         
         with tab2:
             st.markdown("<br>", unsafe_allow_html=True)
@@ -224,11 +234,14 @@ def render_welcome_page():
                 elif not room_code or len(room_code) != 4 or not room_code.isdigit():
                     st.error("⚠️ Please enter a valid 4-digit room code!")
                 else:
-                    st.session_state.username = username.strip()
-                    st.session_state.current_room = room_code
-                    st.session_state.is_logged_in = True
-                    st.success(f"✅ Joined room **{room_code}**! Redirecting...")
-                    st.rerun()
+                    if room_mgmt.room_exists(room_code):
+                        st.session_state.username = username.strip()
+                        st.session_state.current_room = room_code
+                        st.session_state.is_logged_in = True
+                        st.success(f"✅ Joined room **{room_code}**! Redirecting...")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Room **{room_code}** does not exist. Did you mean to create it?")
         
         st.markdown("<br><br>", unsafe_allow_html=True)
         

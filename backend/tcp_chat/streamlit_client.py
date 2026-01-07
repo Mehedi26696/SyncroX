@@ -81,6 +81,10 @@ class TcpChatClient:
         """Request chat history for current room."""
         self.sock.sendall(f"HISTORY {limit}\n".encode("utf-8"))
 
+    def request_image(self, filename: str):
+        """Request raw image data for a CDN file."""
+        self.sock.sendall(f"GET_IMG {filename}\n".encode("utf-8"))
+
     def get_new_messages(self) -> List[str]:
         """Drain all messages from queue and return them as a list."""
         lines: List[str] = []

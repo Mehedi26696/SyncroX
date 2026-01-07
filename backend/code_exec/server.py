@@ -6,6 +6,21 @@ import time
 import re
 from pathlib import Path
 import os
+import sys
+
+# Add project root to path for imports
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from config import SERVER_HOST, ROOM_MGMT_PORT
+from backend.room_mgmt.client import RoomMgmtClient
+from backend.code_exec.exec_history import get_history_manager
+
+# Global room mgmt client
+room_client = RoomMgmtClient(host=SERVER_HOST, port=ROOM_MGMT_PORT)
+# Initialize history manager
+exec_history = get_history_manager()
 
 HOST = "0.0.0.0"
 PORT = 9012           # execution server TCP port
@@ -179,6 +194,14 @@ def handle_client(conn: socket.socket, addr):
                     continue
 
                 room, language, code_size_str, input_size_str = parts[1:]
+                
+                # Validate room exists in central service
+                if not room_client.room_exists(room):
+                    f.write(b"RESULT 0 -1 0 0 0\n")
+                    f.write(b"RoomNotFound\n") # Optional: send as error message
+                    f.flush()
+                    continue
+
                 try:
                     code_size = int(code_size_str)
                     input_size = int(input_size_str)
@@ -222,6 +245,20 @@ def handle_client(conn: socket.socket, addr):
 
                 success, stdout, stderr, rc, time_ms = execute_code(
                     language, code, stdin_data
+                )
+
+                # Record to history
+                exec_history.add_execution(
+                    room=room,
+                    user="Unknown", # Could be passed in protocol if we want
+                    language=language,
+                    code=code.decode("utf-8", errors="replace"),
+                    stdin=stdin_data.decode("utf-8", errors="replace"),
+                    stdout=stdout.decode("utf-8", errors="replace"),
+                    stderr=stderr.decode("utf-8", errors="replace"),
+                    return_code=rc,
+                    success=success,
+                    time_ms=time_ms
                 )
 
                 print(f"[EXEC] Execution complete: success={success}, rc={rc}, stdout_len={len(stdout)}, stderr_len={len(stderr)}, time={time_ms}ms")

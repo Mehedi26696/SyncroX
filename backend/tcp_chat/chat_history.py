@@ -13,7 +13,7 @@ from datetime import datetime
 
 # Default directory for storing chat history
 DEFAULT_HISTORY_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "data", "chat_history"
 )
 
