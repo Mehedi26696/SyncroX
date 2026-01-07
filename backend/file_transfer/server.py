@@ -2,6 +2,7 @@ import socket
 import threading
 import json
 import datetime
+import time
 from pathlib import Path
 import os
 import sys
@@ -12,7 +13,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 # --- Configuration ---
-from config import SERVER_HOST, ROOM_MGMT_PORT
+from config import SERVER_HOST, ROOM_MGMT_PORT, SYNCROX_LOSS_PROB
 from backend.room_mgmt.client import RoomMgmtClient
 
 # Global room mgmt client
@@ -31,7 +32,12 @@ from typing import List, Tuple, Optional, Union
 import uuid
 import base64
 
-from backend.file_transfer.protocol import FileReceiver
+from backend.file_transfer.protocol import FileReceiver, FileSender, FileTransferMetrics
+
+METRICS_DIR = BASE_DIR / "data" / "metrics"
+METRICS_DIR.mkdir(parents=True, exist_ok=True)
+
+sessions_lock = threading.Lock()
 
 def get_room_dir(room: str) -> Optional[Path]:
     """Validate room code and return its directory path."""
@@ -164,13 +170,22 @@ def tcp_server():
 # --- UDP Server Logic ---
 # The FileReceiver class is imported from .protocol
 
-def udp_server():
+def udp_server(sessions: dict):
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_sock.bind((HOST, UDP_PORT))
     print(f"[UDP FILE] Server listening on {HOST}:{UDP_PORT}")
     
-    # (addr) -> { "session_id": id, "room": r, "filename": f, "receiver": FileReceiver }
-    sessions = {} 
+    # (addr) -> { 
+    #   "session_id": id, 
+    #   "type": "UPLOAD"|"DOWNLOAD",
+    #   "room": r, 
+    #   "filename": f, 
+    #   "receiver": FileReceiver (if upload),
+    #   "sender": FileSender (if download),
+    #   "metrics": FileTransferMetrics (if download),
+    #   "handshake_step": ...
+    #   "last_activity": float
+    # }
 
     while True:
         try:
@@ -180,7 +195,8 @@ def udp_server():
             except:
                 continue
 
-            msg_type = msg.get("type")
+            with sessions_lock:
+                msg_type = msg.get("type")
 
             if msg_type == "SYN":
                 room = msg.get("room")
@@ -207,11 +223,109 @@ def udp_server():
                 server_sock.sendto(json.dumps(resp).encode("utf-8"), addr)
                 print(f"[UDP FILE] SYN Received from {addr}: Room={room}, File={filename} -> Session={session_id}")
 
+            elif msg_type == "DOWNLOAD":
+                room = msg.get("room")
+                filename = msg.get("filename")
+                algo = msg.get("algo", "reno")
+                
+                if not room_client.room_exists(room):
+                    print(f"[UDP FILE] DOWNLOAD Rejected: Room {room} not found")
+                    continue
+                
+                room_dir = get_room_dir(room)
+                if not room_dir:
+                    continue
+                
+                path = room_dir / filename
+                if not path.exists() or not path.is_file():
+                    print(f"[UDP FILE] DOWNLOAD Rejected: File {filename} not found in room {room}")
+                    continue
+                
+                with path.open("rb") as f:
+                    data = f.read()
+
+                session_id = str(uuid.uuid4())[:8]
+                metrics = FileTransferMetrics(room, filename, METRICS_DIR, algo=algo, direction="download")
+                metrics.on_start()
+                sender = FileSender(room, filename, data, addr, server_sock, metrics, loss_prob=SYNCROX_LOSS_PROB, session_id=session_id)
+                
+                sessions[addr] = {
+                    "session_id": session_id,
+                    "type": "DOWNLOAD",
+                    "room": room,
+                    "filename": filename,
+                    "sender": sender,
+                    "metrics": metrics,
+                    "next_seq": 1,
+                    "handshake_step": "SYN-ACK_SENT",
+                    "last_activity": time.time()
+                }
+                
+                resp = {
+                    "type": "SYN-ACK",
+                    "filename": filename,
+                    "session_id": session_id
+                }
+                server_sock.sendto(json.dumps(resp).encode("utf-8"), addr)
+                print(f"[UDP FILE] DOWNLOAD Received from {addr}: Room={room}, File={filename} -> Session={session_id}")
+
             elif msg_type == "ACK":
                 session_id = msg.get("session_id")
                 if addr in sessions and sessions[addr]["session_id"] == session_id:
-                    sessions[addr]["handshake_step"] = "READY"
-                    print(f"[UDP FILE] Handshake complete for session {session_id} from {addr}")
+                    sess = sessions[addr]
+                    sess["last_activity"] = time.time()
+                    
+                    if sess.get("type") == "DOWNLOAD":
+                        # Outbound transfer (Server -> Client)
+                        ack_val = int(msg.get("ack", 0))
+                        rwnd = int(msg.get("rwnd", 32))
+                        
+                        metrics = sess["metrics"]
+                        sender = sess["sender"]
+                        
+                        # Calculate RTT if we have timing info
+                        sent_t = sender.sent_times.get(ack_val)
+                        if sent_t is None:
+                            sent_t = sender.sent_times.get(metrics.last_ack + 1, time.time())
+                        rtt_ms = (time.time() - sent_t) * 1000.0
+                        
+                        # Update metrics and check if we should retransmit lost packet
+                        should_retransmit = metrics.on_ack(ack_val, CHUNK_SIZE, rtt_ms)
+                        
+                        if should_retransmit:
+                            # Fast retransmit
+                            lost_seq = metrics.last_ack + 1
+                            offset = (lost_seq - 1) * CHUNK_SIZE
+                            pkt = {
+                                "type": "DATA",
+                                "room": sess["room"],
+                                "filename": sess["filename"],
+                                "seq": lost_seq,
+                                "total": sender.total_packets,
+                                "payload_b64": base64.b64encode(sender.data[offset:offset+CHUNK_SIZE]).decode("ascii"),
+                                "session_id": session_id
+                            }
+                            server_sock.sendto(json.dumps(pkt).encode("utf-8"), addr)
+
+                        # Push next window using stateful tracking
+                        current_next = sess.get("next_seq", 1)
+                        new_next = sender.send_window(current_next, metrics.last_ack + 1, rwnd)
+                        sess["next_seq"] = new_next
+                        
+                        if metrics.last_ack >= sender.total_packets:
+                            print(f"[UDP FILE] Download complete for {sess['filename']} to {addr} (Session={session_id})")
+                            metrics.on_complete()
+                            fin = {
+                                "type": "FIN",
+                                "filename": sess["filename"],
+                                "session_id": session_id
+                            }
+                            server_sock.sendto(json.dumps(fin).encode("utf-8"), addr)
+                            sess["handshake_step"] = "FIN_SENT"
+                    else:
+                        # Inbound transfer handshake (Client -> Server)
+                        sess["handshake_step"] = "READY"
+                        print(f"[UDP FILE] Handshake complete for session {session_id} from {addr}")
 
             elif msg_type == "DATA":
                 session_id = msg.get("session_id")
@@ -219,6 +333,7 @@ def udp_server():
                     continue
                 
                 sess = sessions[addr]
+                sess["last_activity"] = time.time()
                 room = msg["room"]
                 filename = msg["filename"]
                 seq = msg["seq"]
@@ -271,17 +386,56 @@ def udp_server():
         except Exception as e:
             print(f"[UDP FILE] Error: {e}")
 
+def session_timeout_handler(sessions: dict):
+    """Background thread to handle retransmissions and session cleanup."""
+    while True:
+        time.sleep(0.1)
+        now = time.time()
+        to_delete = []
+        
+        with sessions_lock:
+            for addr, sess in sessions.items():
+                # Prune sessions inactive for > 60s
+                if now - sess["last_activity"] > 60.0:
+                    to_delete.append(addr)
+                    continue
+                
+                if sess.get("type") == "DOWNLOAD" and sess["handshake_step"] != "FIN_SENT":
+                    sender = sess["sender"]
+                    metrics = sess["metrics"]
+                    
+                    # Handle retransmission if needed
+                    # MAX_RETRIES = 5 is defined in config or hardcoded
+                    new_next, ok = sender.handle_timeout(metrics.last_ack + 1, max_retries=5)
+                    if not ok:
+                        print(f"[UDP FILE] Download session {sess['session_id']} failed (MAX_RETRIES)")
+                        to_delete.append(addr)
+                        metrics.close()
+                    elif new_next != -1:
+                        sess["next_seq"] = new_next
+            
+            for addr in to_delete:
+                if addr in sessions:
+                    sess = sessions[addr]
+                    if sess.get("type") == "DOWNLOAD" and "metrics" in sess:
+                        sess["metrics"].close()
+                    del sessions[addr]
+
 # --- Main Entry Point ---
 
 def main():
     print(f"[FILE SERVER] Starting...")
     print(f"[FILE SERVER] Root upload dir: {ROOT_UPLOAD_DIR}")
     
+    sessions = {}
+    
     tcp_thread = threading.Thread(target=tcp_server, daemon=True)
-    udp_thread = threading.Thread(target=udp_server, daemon=True)
+    udp_thread = threading.Thread(target=udp_server, args=(sessions,), daemon=True)
+    timeout_thread = threading.Thread(target=session_timeout_handler, args=(sessions,), daemon=True)
     
     tcp_thread.start()
     udp_thread.start()
+    timeout_thread.start()
     
     try:
         while True:

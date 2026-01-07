@@ -65,6 +65,14 @@ class FileTransferMetrics:
         ])
         self.csv_file.flush()
 
+    def on_start(self):
+        """Log the start of a transfer."""
+        self._log(0, None, "START")
+
+    def on_complete(self):
+        """Log the completion of a transfer."""
+        self._log(0, None, "COMPLETE")
+
     def _update_phase(self):
         new_phase = (
             "FAST_RECOVERY" if self.in_fast_recovery

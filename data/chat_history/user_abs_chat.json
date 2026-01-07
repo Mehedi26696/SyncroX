@@ -1,8 +1,8 @@
 {
   "username": "ABS",
-  "last_updated": 1767788215.7306743,
-  "last_updated_readable": "2026-01-07 18:16:55",
-  "total_messages": 1,
+  "last_updated": 1767791179.5671837,
+  "last_updated_readable": "2026-01-07 19:06:19",
+  "total_messages": 7,
   "messages": [
     {
       "id": "5309_ABS_1767788215728",
@@ -11,6 +11,60 @@
       "room": "5309",
       "username": "ABS",
       "message": "Nice",
+      "type": "text"
+    },
+    {
+      "id": "9707_ABS_1767791038526",
+      "timestamp": 1767791038.5264542,
+      "datetime": "2026-01-07 19:03:58",
+      "room": "9707",
+      "username": "ABS",
+      "message": "Hi",
+      "type": "text"
+    },
+    {
+      "id": "9707_ABS_1767791116457",
+      "timestamp": 1767791116.457532,
+      "datetime": "2026-01-07 19:05:16",
+      "room": "9707",
+      "username": "ABS",
+      "message": "Hello",
+      "type": "text"
+    },
+    {
+      "id": "9707_ABS_1767791116715",
+      "timestamp": 1767791116.715693,
+      "datetime": "2026-01-07 19:05:16",
+      "room": "9707",
+      "username": "ABS",
+      "message": "Hello",
+      "type": "text"
+    },
+    {
+      "id": "9707_ABS_1767791122883",
+      "timestamp": 1767791122.8830616,
+      "datetime": "2026-01-07 19:05:22",
+      "room": "9707",
+      "username": "ABS",
+      "message": "Hi",
+      "type": "text"
+    },
+    {
+      "id": "9707_ABS_1767791154232",
+      "timestamp": 1767791154.2325983,
+      "datetime": "2026-01-07 19:05:54",
+      "room": "9707",
+      "username": "ABS",
+      "message": "chat_img_9707_8.png",
+      "type": "image"
+    },
+    {
+      "id": "9707_ABS_1767791179562",
+      "timestamp": 1767791179.5629466,
+      "datetime": "2026-01-07 19:06:19",
+      "room": "9707",
+      "username": "ABS",
+      "message": "Hi",
       "type": "text"
     }
   ]

@@ -76,6 +76,7 @@ class SyncroXFileClient:
             return "ERROR Handshake failed"
 
         metrics = FileTransferMetrics(room, filename, METRICS_DIR, algo=self.algo, direction="upload")
+        metrics.on_start()
         sender = FileSender(room, filename, data, (self.host, self.udp_port), self.udp_sock, metrics, loss_prob=SYNCROX_LOSS_PROB, session_id=session_id)
 
         next_seq = 1
@@ -142,6 +143,7 @@ class SyncroXFileClient:
             except socket.timeout:
                 pass
 
+        metrics.on_complete()
         metrics.close()
         return "OK SAVED"
 

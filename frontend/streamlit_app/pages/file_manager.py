@@ -322,6 +322,11 @@ st.markdown("---")
 # ---- List & Download section ----
 st.subheader("📂 Files in This Room")
 
+if "download_data" not in st.session_state:
+    st.session_state.download_data = None
+if "download_file" not in st.session_state:
+    st.session_state.download_file = None
+
 try:
     client = SyncroXFileClient(host=SERVER_HOST, port=FILE_PORT, algo=algo)
     files = client.list_files(st.session_state.current_room)
@@ -335,30 +340,42 @@ if files:
     
     for name, size, created in files:
         with st.expander(f"📄 {name} ({size:,} bytes)"):
-            col_info, col_action = st.columns([3, 1])
+            col_info, col_action = st.columns([2, 1])
             
             with col_info:
                 st.write(f"**Size:** {size:,} bytes ({size/1024:.2f} KB)")
                 st.write(f"**Created:** {created}")
             
             with col_action:
-                if client and st.button(f"⬇️ Download", key=f"dl_{name}", use_container_width=True):
-                    try:
-                        with st.spinner(f"Downloading {name}..."):
-                            data = client.download_bytes(st.session_state.current_room, name)
-                        
-                        if data is None:
-                            st.error("❌ Download failed")
-                        else:
-                            st.download_button(
-                                "💾 Save to Disk",
-                                data=data,
-                                file_name=name,
-                                mime="application/octet-stream",
-                                use_container_width=True
-                            )
-                    except Exception as e:
-                        st.error(f"❌ Download failed: {e}")
+                # If this file is already downloaded in session, show the final save button
+                if st.session_state.get("download_file") == name and st.session_state.get("download_data") is not None:
+                    st.success("✅ Ready!")
+                    st.download_button(
+                        "💾 Save to Disk",
+                        data=st.session_state.download_data,
+                        file_name=name,
+                        mime="application/octet-stream",
+                        key=f"save_{name}",
+                        use_container_width=True
+                    )
+                    if st.button("🔄 Clear", key=f"clr_{name}", use_container_width=True):
+                        st.session_state.download_data = None
+                        st.session_state.download_file = None
+                        st.rerun()
+                else:
+                    if client and st.button(f"⬇️ Prepare", key=f"dl_{name}", use_container_width=True):
+                        try:
+                            with st.spinner(f"Fetching {name}..."):
+                                data = client.download_bytes(st.session_state.current_room, name)
+                            
+                            if data is None:
+                                st.error("❌ Transfer failed")
+                            else:
+                                st.session_state.download_data = data
+                                st.session_state.download_file = name
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Download failed: {e}")
 else:
     st.info("📭 No files in this room yet. Upload a file to get started!")
 

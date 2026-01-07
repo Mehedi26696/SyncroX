@@ -315,8 +315,8 @@ if client is None:
         if not st.session_state.chat_history_loaded:
             st.session_state.chat_client.request_history(50)
         
-        # We don't set st.session_state.chat_room = st.session_state.current_room here anymore.
-        # We wait for the server confirmation (OK Joined) in the message loop.
+        # Sync internal state so we don't trigger the reset block on rerun
+        st.session_state.chat_room = st.session_state.current_room
         st.session_state.chat_status = f"Connecting to {st.session_state.current_room}..."
         st.rerun()
     except Exception as e:
@@ -491,6 +491,7 @@ for line in new_lines:
         # If joining failed, reset the chat_room state so user stays/returns to selection
         if "RoomNotFound" in error_msg or "not in a room" in error_msg:
             st.session_state.chat_room = None
+            st.session_state.current_room = "" # Clear selection to stop retry loop
             client.current_room = None
             st.session_state.chat_history_loaded = False
             rerun_at_end = True
