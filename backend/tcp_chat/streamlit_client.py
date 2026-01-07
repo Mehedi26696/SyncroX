@@ -46,12 +46,9 @@ class TcpChatClient:
                 line = raw.rstrip("\n")
                 self._messages.put(line)
 
-                # auto-track room joining/creation
+                # auto-track room joining
                 parts = line.split()
-                if len(parts) >= 2 and parts[0] == "ROOM":
-                    # e.g. "ROOM 1234"
-                    self.current_room = parts[1]
-                elif len(parts) >= 3 and parts[0] == "OK" and parts[1] == "Joined":
+                if len(parts) >= 3 and parts[0] == "OK" and parts[1] == "Joined":
                     # e.g. "OK Joined 1234"
                     self.current_room = parts[2]
         except Exception as e:

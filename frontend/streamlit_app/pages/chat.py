@@ -254,10 +254,10 @@ if "chat_history_buffer" not in st.session_state:
     st.session_state.chat_history_buffer = []
 if "chat_history_loaded" not in st.session_state:
     st.session_state.chat_history_loaded = False
-if "chat_history_loading" not in st.session_state:
-    st.session_state.chat_history_loading = False
-if "chat_seen_messages" not in st.session_state:
-    st.session_state.chat_seen_messages = set()  # Track message hashes to prevent duplicates
+    if "chat_history_room" not in st.session_state:
+        st.session_state.chat_history_room = None
+    if "chat_history_loading" not in st.session_state:
+        st.session_state.chat_history_loading = False
 if "chat_seen_ids" not in st.session_state:
     st.session_state.chat_seen_ids = set()  # Track room:msg_id to allow valid repeats
 if "chat_current_user" not in st.session_state:
@@ -315,8 +315,9 @@ if client is None:
         if not st.session_state.chat_history_loaded:
             st.session_state.chat_client.request_history(50)
         
-        st.session_state.chat_room = st.session_state.current_room
-        st.session_state.chat_status = f"Connected to room {st.session_state.current_room}"
+        # We don't set st.session_state.chat_room = st.session_state.current_room here anymore.
+        # We wait for the server confirmation (OK Joined) in the message loop.
+        st.session_state.chat_status = f"Connecting to {st.session_state.current_room}..."
         st.rerun()
     except Exception as e:
         st.error(f"Could not connect to chat server: {e}")
@@ -351,7 +352,8 @@ for line in new_lines:
                 is_me = (sender.lower() == current_user)
                 
                 # Deduplicate using unique msg_id
-                msg_key = f"{st.session_state.current_room}:{msg_id}"
+                room_from_msg = parts[1]
+                msg_key = f"{room_from_msg}:{msg_id}"
                 if msg_key not in st.session_state.chat_seen_ids:
                     st.session_state.chat_seen_ids.add(msg_key)
                     st.session_state.chat_log.append({
@@ -374,7 +376,8 @@ for line in new_lines:
             is_me = (sender.lower() == current_user)
             
             # Deduplicate using unique msg_id
-            img_key = f"{st.session_state.current_room}:{msg_id}"
+            room_from_img = parts[1]
+            img_key = f"{room_from_img}:{msg_id}"
             if img_key not in st.session_state.chat_seen_ids:
                 st.session_state.chat_seen_ids.add(img_key)
                 st.session_state.chat_log.append({
@@ -398,6 +401,9 @@ for line in new_lines:
 
     elif line.startswith("HISTORY "):
         # Format: "HISTORY <room> <count>" - marks start of history
+        parts = line.split()
+        if len(parts) >= 2:
+            st.session_state.chat_history_room = parts[1]
         st.session_state.chat_history_loading = True
         st.session_state.chat_history_buffer = []
     
@@ -416,7 +422,8 @@ for line in new_lines:
             
             # Deduplicate using unique server-provided ID
             # Use room:msg_id format to prevent cross-room collisions
-            msg_key = f"{st.session_state.current_room}:{orig_msg_id}"
+            hist_room = st.session_state.chat_history_room or st.session_state.current_room
+            msg_key = f"{hist_room}:{orig_msg_id}"
             if msg_key in st.session_state.chat_seen_ids:
                 continue # Skip if already seen (e.g. real-time echo)
             st.session_state.chat_seen_ids.add(msg_key)
@@ -478,7 +485,15 @@ for line in new_lines:
     elif line.startswith("ROOMS "):
         st.session_state.chat_log.append({"type": "system", "text": f"📋 Available rooms: {line[6:]}"})
     elif line.startswith("ERROR "):
-        st.session_state.chat_log.append({"type": "system", "text": f"❌ {line[6:]}"})
+        error_msg = line[6:]
+        st.session_state.chat_log.append({"type": "system", "text": f"❌ {error_msg}"})
+        
+        # If joining failed, reset the chat_room state so user stays/returns to selection
+        if "RoomNotFound" in error_msg or "not in a room" in error_msg:
+            st.session_state.chat_room = None
+            client.current_room = None
+            st.session_state.chat_history_loaded = False
+            rerun_at_end = True
     else:
         st.session_state.chat_log.append({"type": "system", "text": line})
 
