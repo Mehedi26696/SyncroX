@@ -449,6 +449,7 @@ if run_clicked:
                 try:
                     success, out_text, err_text, rc, time_ms = exec_client.execute(
                         room=room,
+                        user=username,
                         language=lang,
                         code=code_to_run,
                         stdin_text=stdin_text,

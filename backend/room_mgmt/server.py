@@ -83,6 +83,13 @@ def handle_client(conn, addr):
                 else:
                     conn.sendall(b"ERROR NotFound\n")
 
+            elif cmd == "LIST":
+                # LIST
+                with lock:
+                    all_codes = list(rooms.keys())
+                codes_str = " ".join(all_codes)
+                conn.sendall(f"ROOMS {codes_str}\n".encode("utf-8"))
+
             elif cmd == "BYE":
                 conn.sendall(b"OK Bye\n")
                 break

@@ -221,11 +221,12 @@ def render_welcome_page():
         with tab2:
             st.markdown("<br>", unsafe_allow_html=True)
             room_code = st.text_input(
-                "Enter 4-digit room code",
+                "Enter 4-digit Room Code",
                 max_chars=4,
-                placeholder="1234",
+                placeholder="e.g. 1234",
                 key="join_room_input",
-                label_visibility="collapsed"
+                label_visibility="collapsed",
+                help="Rooms must be created first by someone."
             )
             
             if st.button("🚀 Join Room", use_container_width=True, type="primary"):

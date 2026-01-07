@@ -20,6 +20,12 @@ class RoomMgmtClient:
             return resp.split()[1]
         return None
 
-    def room_exists(self, room_code):
-        resp = self._send_command(f"EXISTS {room_code}")
+    def room_exists(self, code: str) -> bool:
+        resp = self._send_command(f"EXISTS {code}")
         return resp == "OK"
+
+    def list_rooms(self) -> list[str]:
+        resp = self._send_command("LIST")
+        if resp.startswith("ROOMS "):
+            return resp[6:].split()
+        return []

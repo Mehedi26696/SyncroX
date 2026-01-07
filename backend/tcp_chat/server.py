@@ -192,6 +192,13 @@ def handle_client(conn: socket.socket, addr):
                 # Instead of broadcasting base64, save to CDN and broadcast filename
                 img_data = rest[0]
                 
+                # Enforce size limit (approx 5MB of binary data is ~6.7MB base64)
+                # Let's be strict: 8MB base64 string limit
+                if len(img_data) > 8 * 1024 * 1024:
+                     send_line(conn, "ERROR Image too large (max 5MB)")
+                     print(f"[!] {username} tried to send too large image ({len(img_data)} bytes)")
+                     continue
+                
                 # Generate message ID and timestamp
                 now_dt = datetime.now()
                 ts_str = now_dt.strftime("%Y-%m-%d_%H:%M:%S")
@@ -271,9 +278,9 @@ def handle_client(conn: socket.socket, addr):
                     send_line(conn, f"ERROR Could not read image: {e}")
 
             elif cmd == "LIST_ROOMS":
-                with lock:
-                    codes = " ".join(sorted(rooms.keys()))
-                send_line(conn, f"ROOMS {codes}")
+                all_rooms = room_client.list_rooms()
+                rooms_str = ", ".join(all_rooms) if all_rooms else "None"
+                send_line(conn, f"ROOMS {rooms_str}")
 
             elif cmd == "BYE":
                 send_line(conn, "OK Bye")

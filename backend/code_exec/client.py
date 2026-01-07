@@ -42,6 +42,7 @@ class TcpExecClient:
     def execute(
         self,
         room: str,
+        user: str,
         language: str,
         code: str,
         stdin_text: str = "",
@@ -59,7 +60,7 @@ class TcpExecClient:
         code_bytes = code.encode("utf-8")
         stdin_bytes = stdin_text.encode("utf-8")
         self._send_line(
-            f"EXECUTE {room} {language} {len(code_bytes)} {len(stdin_bytes)}"
+            f"EXECUTE {room} {user} {language} {len(code_bytes)} {len(stdin_bytes)}"
         )
         self.f.write(code_bytes)
         self.f.write(stdin_bytes)
