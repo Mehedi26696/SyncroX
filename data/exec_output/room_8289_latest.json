@@ -1,0 +1,10 @@
+{
+  "timestamp": 1767796546.1785583,
+  "language": "python",
+  "success": true,
+  "return_code": 0,
+  "time_ms": 1178,
+  "stdout": "Hello man\n",
+  "stderr": "",
+  "formatted_output": "[language=python, return_code=0, time=1178 ms, success=True]\nHello man"
+}
