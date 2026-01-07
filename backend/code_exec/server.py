@@ -248,15 +248,17 @@ def handle_client(conn: socket.socket, addr):
                 )
 
                 # Record to history
-                exec_history.add_entry(
-                    room,
-                    user,
-                    language,
-                    code.decode("utf-8", errors="replace"),
-                    output=stdout.decode("utf-8", errors="replace"),
-                    error=stderr.decode("utf-8", errors="replace"),
-                    exit_code=rc,
-                    runtime_ms=time_ms
+                exec_history.add_execution(
+                    room=room,
+                    user=user,
+                    language=language,
+                    code=code.decode("utf-8", errors="replace"),
+                    stdin=stdin_data.decode("utf-8", errors="replace"),
+                    stdout=stdout.decode("utf-8", errors="replace"),
+                    stderr=stderr.decode("utf-8", errors="replace"),
+                    return_code=rc,
+                    success=success,
+                    time_ms=time_ms
                 )
 
                 print(f"[EXEC] Execution complete: success={success}, rc={rc}, stdout_len={len(stdout)}, stderr_len={len(stderr)}, time={time_ms}ms")
