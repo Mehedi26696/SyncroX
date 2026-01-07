@@ -1,27 +1,105 @@
-2026-01-06 17:33:01,096 Connected to 127.0.0.1:9011 as Mehedi
-2026-01-06 17:33:01,099 Received DOC header: DOC 4444 python 48 server
-2026-01-06 17:33:01,099 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
-2026-01-06 17:33:01,099 Received DOC header: DOC 4444 python 48 server
-2026-01-06 17:33:01,100 Put doc update in queue. Lang: python, Size: 48. Queue size: 2
-2026-01-06 17:33:01,102 Received DOC header: DOC 4444 python 48 server
-2026-01-06 17:33:01,104 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
-2026-01-06 17:33:03,546 Received DOC header: DOC 4444 python 48 server
-2026-01-06 17:33:03,549 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
-2026-01-06 17:33:05,520 Received DOC header: DOC 4444 python 48 server
-2026-01-06 17:33:05,521 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
-2026-01-06 17:33:07,527 Received DOC header: DOC 4444 python 48 server
-2026-01-06 17:33:07,529 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
-2026-01-06 17:33:09,540 Received DOC header: DOC 4444 python 48 server
-2026-01-06 17:33:09,543 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
-2026-01-06 17:33:11,525 Received DOC header: DOC 4444 python 48 server
-2026-01-06 17:33:11,527 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
-2026-01-06 17:33:13,523 Received DOC header: DOC 4444 python 48 server
-2026-01-06 17:33:13,524 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
-2026-01-06 17:33:15,488 Received DOC header: DOC 4444 python 16 server
-2026-01-06 17:33:15,492 Put doc update in queue. Lang: python, Size: 16. Queue size: 1
-2026-01-06 17:33:18,105 Received DOC header: DOC 4444 python 16 server
-2026-01-06 17:33:18,107 Put doc update in queue. Lang: python, Size: 16. Queue size: 1
-2026-01-06 17:33:19,747 Received DOC header: DOC 4444 python 16 server
-2026-01-06 17:33:19,748 Put doc update in queue. Lang: python, Size: 16. Queue size: 1
-2026-01-06 17:33:27,146 Received DOC header: DOC 4444 python 16 server
-2026-01-06 17:33:27,147 Put doc update in queue. Lang: python, Size: 16. Queue size: 1
+2026-01-07 16:47:55,388 Connected to 127.0.0.1:9011 as Mehedi
+2026-01-07 16:47:55,392 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:47:55,393 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:47:55,393 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:47:55,393 Put doc update in queue. Lang: python, Size: 48. Queue size: 2
+2026-01-07 16:47:55,396 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:47:55,399 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:47:57,640 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:47:57,643 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:47:59,606 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:47:59,608 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:01,632 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:01,634 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:03,595 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:03,596 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:05,585 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:05,586 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:07,595 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:07,596 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:09,598 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:09,599 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:11,578 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:11,579 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:13,585 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:13,586 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:15,604 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:15,605 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:17,603 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:17,605 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:19,583 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:19,583 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:21,590 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:21,592 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:24,336 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:24,337 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:26,344 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:26,347 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:28,340 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:28,344 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:30,314 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:30,315 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:32,346 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:32,350 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:34,340 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:34,341 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:36,346 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:36,349 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:38,316 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:38,317 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:40,341 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:40,344 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:42,294 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:42,294 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:44,349 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:44,353 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:46,344 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:46,347 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:48,338 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:48,342 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:50,299 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:50,300 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:52,305 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:52,306 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:54,362 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:54,366 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:56,349 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:56,353 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:48:58,310 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:48:58,312 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:00,362 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:00,365 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:02,344 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:02,344 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:04,336 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:04,336 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:06,338 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:06,338 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:08,310 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:08,311 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:10,630 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:10,633 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:12,333 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:12,334 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:14,337 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:14,341 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:16,343 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:16,343 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:18,349 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:18,352 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:20,355 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:20,359 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:22,342 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:22,343 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:24,346 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:24,349 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:26,335 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:26,335 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:28,337 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:28,337 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:30,077 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:30,079 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:31,622 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:31,623 Put doc update in queue. Lang: python, Size: 48. Queue size: 1
+2026-01-07 16:49:33,629 Received DOC header: DOC 0000 python 48 server
+2026-01-07 16:49:33,638 Put doc update in queue. Lang: python, Size: 48. Queue size: 1

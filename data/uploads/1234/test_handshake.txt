@@ -1,1 +1,0 @@
-Hello SyncroX! This is a test for the reliable UDP handshake.

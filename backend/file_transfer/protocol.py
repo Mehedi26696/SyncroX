@@ -4,18 +4,23 @@ import csv
 import random
 import socket
 import threading
+import base64
 from pathlib import Path
 from typing import Optional, Tuple
 
-# --- Shared Constants ---
-CHUNK_SIZE = 4096
-ALPHA = 0.125
-BETA = 0.25
+try:
+    from config import CHUNK_SIZE, ALPHA, BETA, MIN_RTO, INITIAL_CWND, INITIAL_SSTHRESH, DEFAULT_RWND
+except ImportError:
+    CHUNK_SIZE = 4096
+    ALPHA = 0.125
+    BETA = 0.25
+    MIN_RTO = 200.0
+    INITIAL_CWND = 1.0
+    INITIAL_SSTHRESH = 16.0
+    DEFAULT_RWND = 32
 
 
 class FileTransferMetrics:
-    """Tracks EWMA RTT, RTO and Tahoe/Reno cwnd."""
-
     def __init__(self, room: str, filename: str, metrics_dir: Path,
                  algo: str = "reno", direction: str = "upload"):
         self.room = room
@@ -24,11 +29,11 @@ class FileTransferMetrics:
         self.algo = algo.lower()
         self.direction = direction
 
-        self.cwnd = 1.0
-        self.ssthresh = 16.0
+        self.cwnd = INITIAL_CWND
+        self.ssthresh = INITIAL_SSTHRESH
         self.srtt = None
         self.rttvar = None
-        self.rto = 1000.0  # ms
+        self.rto = 1000.0
 
         self.seq = 0
         self.last_ack = 0
@@ -67,15 +72,12 @@ class FileTransferMetrics:
             else "CONG_AVOID"
         )
         if new_phase != self.phase:
-            print(f"[{self.algo.upper()} {self.direction.upper()}] "
-                  f"PHASE CHANGE: {self.phase} → {new_phase}")
+            print(f"[{self.algo.upper()} {self.direction.upper()}] PHASE CHANGE: {self.phase} → {new_phase}")
             self.phase = new_phase
 
     def on_ack(self, ack_seq: int, bytes_transferred: int, rtt_ms: float) -> bool:
-        """Returns True if fast retransmit is triggered."""
         self.seq += 1
 
-        # RTT / RTO update (RFC-style EWMA)
         if self.srtt is None:
             self.srtt = rtt_ms
             self.rttvar = rtt_ms / 2.0
@@ -83,9 +85,8 @@ class FileTransferMetrics:
             self.rttvar = (1 - BETA) * self.rttvar + BETA * abs(self.srtt - rtt_ms)
             self.srtt = (1 - ALPHA) * self.srtt + ALPHA * rtt_ms
         self.rto = self.srtt + 4 * self.rttvar
-        self.rto = max(self.rto, 200.0)   # minimum 200ms to avoid spurious timeouts
+        self.rto = max(self.rto, MIN_RTO)
 
-        # New ACK
         if ack_seq > self.last_ack:
             old_cwnd = self.cwnd
 
@@ -106,21 +107,15 @@ class FileTransferMetrics:
             print(
                 f"[{self.algo.upper()} {self.direction.upper()}] "
                 f"NEW_ACK={ack_seq} | cwnd {old_cwnd:.2f}→{self.cwnd:.2f} | "
-                f"ssthresh={self.ssthresh:.2f} | "
-                f"RTT={rtt_ms:.2f}ms RTO={self.rto:.2f}ms | {rule}"
+                f"ssthresh={self.ssthresh:.2f} | RTT={rtt_ms:.2f}ms RTO={self.rto:.2f}ms | {rule}"
             )
 
             self._update_phase()
             self._log(bytes_transferred, rtt_ms, "ACK")
             return False
-
-        # Duplicate ACK
-        else:
+        elif ack_seq == self.last_ack:
             self.dup_acks += 1
-            print(
-                f"[{self.algo.upper()} {self.direction.upper()}] "
-                f"DUP_ACK #{self.dup_acks} for ACK={ack_seq}"
-            )
+            print(f"[{self.algo.upper()} {self.direction.upper()}] DUP_ACK #{self.dup_acks} for ACK={ack_seq}")
 
             if self.dup_acks == 3:
                 self.ssthresh = max(self.cwnd / 2.0, 2.0)
@@ -135,20 +130,20 @@ class FileTransferMetrics:
                     action = "FAST_RECOVERY (Reno)"
 
                 print(
-                    f"[{self.algo.upper()} {self.direction.upper()}] "
-                    f"FAST_RETRANSMIT | lost_seq={self.last_ack + 1} | "
-                    f"cwnd={self.cwnd:.2f} | ssthresh={self.ssthresh:.2f} | {action}"
+                    f"[{self.algo.upper()} {self.direction.upper()}] FAST_RETRANSMIT | "
+                    f"lost_seq={self.last_ack + 1} | cwnd={self.cwnd:.2f} | ssthresh={self.ssthresh:.2f} | {action}"
                 )
 
                 self._update_phase()
                 self._log(0, None, f"FAST_RETRANSMIT_{self.algo.upper()}")
                 return True
 
-            elif self.in_fast_recovery:
+            if self.in_fast_recovery:
                 self.cwnd += 1.0
                 self._log(0, None, "DUP_ACK_RECOVERY")
 
             return False
+        return False
 
     def on_loss(self):
         self.seq += 1
@@ -159,10 +154,8 @@ class FileTransferMetrics:
         self.rto = min(self.rto * 2.0, 30000.0)
 
         print(
-            f"[{self.algo.upper()} {self.direction.upper()}] "
-            f"TIMEOUT | base_seq={self.last_ack + 1} | "
-            f"new_RTO={self.rto:.2f}ms | "
-            f"cwnd={self.cwnd:.2f} | ssthresh={self.ssthresh:.2f}"
+            f"[{self.algo.upper()} {self.direction.upper()}] TIMEOUT | base_seq={self.last_ack + 1} | "
+            f"new_RTO={self.rto:.2f}ms | cwnd={self.cwnd:.2f} | ssthresh={self.ssthresh:.2f}"
         )
 
         self.phase = "SLOW_START"
@@ -176,21 +169,44 @@ class FileTransferMetrics:
 
 
 class FileReceiver:
-    """Receiver with cumulative ACKs."""
-
-    def __init__(self, total_packets: int):
+    def __init__(self, total_packets: int, max_buf: int = DEFAULT_RWND):
         self.total_packets = total_packets
         self.chunks = {}
         self.received = set()
+        self.out_of_order = set()
         self.next_expected = 1
-        self.rwnd = 32
+        self.max_buf = max_buf
+        self.rwnd = max_buf
+
+    def _recalc_rwnd(self):
+        free = self.max_buf - len(self.out_of_order)
+        self.rwnd = free if free > 0 else 0
 
     def add_chunk(self, seq: int, data: bytes):
-        if seq not in self.received and seq >= self.next_expected:
-            self.chunks[seq] = data
-            self.received.add(seq)
-            while self.next_expected in self.received:
-                self.next_expected += 1
+        if seq < self.next_expected:
+            self._recalc_rwnd()
+            return
+
+        if seq >= self.next_expected + self.max_buf:
+            self._recalc_rwnd()
+            return
+
+        if seq in self.received:
+            self._recalc_rwnd()
+            return
+
+        self.chunks[seq] = data
+        self.received.add(seq)
+
+        if seq != self.next_expected:
+            self.out_of_order.add(seq)
+
+        while self.next_expected in self.received:
+            if self.next_expected in self.out_of_order:
+                self.out_of_order.remove(self.next_expected)
+            self.next_expected += 1
+
+        self._recalc_rwnd()
 
     def get_ack_seq(self) -> int:
         return self.next_expected - 1
@@ -208,11 +224,10 @@ class FileReceiver:
 
 
 class FileSender:
-    """Sliding-window sender with loss simulation."""
-
     def __init__(self, room: str, filename: str, data: bytes,
                  addr: Tuple[str, int], sock: socket.socket,
-                 metrics: FileTransferMetrics, loss_prob: float = 0.0):
+                 metrics: FileTransferMetrics, loss_prob: float = 0.0,
+                 session_id: Optional[str] = None):
         self.room = room
         self.filename = filename
         self.data = data
@@ -220,6 +235,7 @@ class FileSender:
         self.sock = sock
         self.metrics = metrics
         self.loss_prob = loss_prob
+        self.session_id = session_id
 
         self.total_packets = (len(data) + CHUNK_SIZE - 1) // CHUNK_SIZE
         self.sent_times = {}
@@ -228,11 +244,14 @@ class FileSender:
 
     def send_window(self, next_seq: int, window_base: int, rwnd: int) -> int:
         with self.lock:
+            if rwnd <= 0:
+                return next_seq
+
             current_window = min(int(self.metrics.cwnd), rwnd)
             requested_next = next_seq
             start_seq = max(next_seq, window_base)
             next_seq = start_seq
-            
+
             while next_seq < window_base + current_window and next_seq <= self.total_packets:
                 offset = (next_seq - 1) * CHUNK_SIZE
                 chunk = self.data[offset:offset + CHUNK_SIZE]
@@ -243,7 +262,8 @@ class FileSender:
                     "filename": self.filename,
                     "seq": next_seq,
                     "total": self.total_packets,
-                    "payload_hex": chunk.hex()
+                    "payload_b64": base64.b64encode(chunk).decode("ascii"),
+                    "session_id": self.session_id
                 }
 
                 if random.random() >= self.loss_prob:
@@ -261,8 +281,7 @@ class FileSender:
                 print(
                     f"[{self.metrics.algo.upper()} {self.metrics.direction.upper()}] "
                     f"SEND base={window_base} next_in={requested_next} "
-                    f"sent={start_seq}-{end_seq} "
-                    f"(cwnd={self.metrics.cwnd:.2f}, rwnd={rwnd})"
+                    f"sent={start_seq}-{end_seq} (cwnd={self.metrics.cwnd:.2f}, rwnd={rwnd})"
                 )
 
             return next_seq
@@ -280,7 +299,8 @@ class FileSender:
                     "filename": self.filename,
                     "seq": window_base,
                     "total": self.total_packets,
-                    "payload_hex": self.data[offset:offset + CHUNK_SIZE].hex()
+                    "payload_b64": base64.b64encode(self.data[offset:offset + CHUNK_SIZE]).decode("ascii"),
+                    "session_id": self.session_id
                 }
 
                 try:
@@ -289,7 +309,7 @@ class FileSender:
                     pass
 
                 self.sent_times[window_base] = time.time()
-                self.retries[window_base] += 1
+                self.retries[window_base] = self.retries.get(window_base, 0) + 1
                 return window_base + 1, True
 
             return window_base, False

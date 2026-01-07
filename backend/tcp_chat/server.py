@@ -11,6 +11,7 @@ from collections import defaultdict, deque
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from chat_history import get_chat_history_manager
+from datetime import datetime
 
 HOST = "0.0.0.0"
 PORT = 9009
@@ -29,13 +30,6 @@ msg_times: dict[socket.socket, deque] = defaultdict(deque)
 
 # Message ID counter per room
 msg_counters: dict[str, int] = defaultdict(int)
-
-# Seen tracking: room_code -> msg_id -> set of usernames who have seen it
-msg_seen: dict[str, dict[int, set[str]]] = defaultdict(lambda: defaultdict(set))
-
-# Track last N message IDs per room for seen status (limit memory usage)
-MAX_TRACKED_MESSAGES = 100
-msg_ids_by_room: dict[str, deque] = defaultdict(lambda: deque(maxlen=MAX_TRACKED_MESSAGES))
 
 lock = threading.Lock()
 
@@ -149,16 +143,16 @@ def handle_client(conn: socket.socket, addr):
                     continue
                 times.append(now)
 
-                # Generate message ID
+                # Generate message ID and timestamp
+                now_dt = datetime.now()
+                ts_str = now_dt.strftime("%Y-%m-%d_%H:%M:%S")
+                
                 with lock:
                     msg_counters[room_joined] += 1
                     msg_id = msg_counters[room_joined]
-                    msg_ids_by_room[room_joined].append(msg_id)
-                    # Sender has seen their own message
-                    msg_seen[room_joined][msg_id].add(username)
                 
-                broadcast(room_joined, f"MSG {room_joined} {msg_id} {username}: {msg}")
-                print(f"[ROOM {room_joined}] #{msg_id} {username}: {msg}")
+                broadcast(room_joined, f"MSG {room_joined} {msg_id} {ts_str} {username}: {msg}")
+                print(f"[ROOM {room_joined}] #{msg_id} @ {ts_str} {username}: {msg}")
                 
                 # Save message to history
                 chat_history.add_message(room_joined, username, msg, msg_type="text")
@@ -174,15 +168,16 @@ def handle_client(conn: socket.socket, addr):
                 # We broadcast: IMG <room_code> <msg_id> <username> <base64_string>
                 img_data = rest[0]
                 
-                # Generate message ID
+                # Generate message ID and timestamp
+                now_dt = datetime.now()
+                ts_str = now_dt.strftime("%Y-%m-%d_%H:%M:%S")
+                
                 with lock:
                     msg_counters[room_joined] += 1
                     msg_id = msg_counters[room_joined]
-                    msg_ids_by_room[room_joined].append(msg_id)
-                    msg_seen[room_joined][msg_id].add(username)
                 
-                broadcast(room_joined, f"IMG {room_joined} {msg_id} {username} {img_data}")
-                print(f"[ROOM {room_joined}] #{msg_id} {username} sent an image ({len(img_data)} chars)")
+                broadcast(room_joined, f"IMG {room_joined} {msg_id} {ts_str} {username} {img_data}")
+                print(f"[ROOM {room_joined}] #{msg_id} @ {ts_str} {username} sent an image ({len(img_data)} chars)")
                 
                 # Save image to history (store base64 data)
                 chat_history.add_message(room_joined, username, img_data, msg_type="image")
@@ -213,30 +208,6 @@ def handle_client(conn: socket.socket, addr):
                     send_line(conn, f"HIST {msg_type} {timestamp} {sender} {content}")
                 send_line(conn, "HISTORY_END")
                 print(f"[+] Sent {len(messages)} history messages to {username} in room {room_joined}")
-
-            elif cmd == "SEEN":
-                # SEEN <msg_id> - Mark a message as seen by this user
-                if room_joined is None:
-                    send_line(conn, "ERROR You are not in a room")
-                    continue
-                if not rest:
-                    send_line(conn, "ERROR SEEN requires message ID")
-                    continue
-                try:
-                    msg_id = int(rest[0].strip())
-                except ValueError:
-                    send_line(conn, "ERROR Invalid message ID")
-                    continue
-                
-                with lock:
-                    if msg_id in [m for m in msg_ids_by_room[room_joined]]:
-                        already_seen = username in msg_seen[room_joined][msg_id]
-                        msg_seen[room_joined][msg_id].add(username)
-                        seen_by = list(msg_seen[room_joined][msg_id])
-                
-                # Broadcast seen update to everyone in room (only if new)
-                if not already_seen:
-                    broadcast(room_joined, f"SEEN_BY {room_joined} {msg_id} {','.join(seen_by)}")
 
             elif cmd == "LIST_ROOMS":
                 with lock:
