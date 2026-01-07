@@ -1,12 +1,4 @@
-"""
-SyncroX Configuration
-
-Change SERVER_HOST to the IP address of the machine running the servers.
-- For local development: "127.0.0.1"
-- For LAN access: Use server's IP, e.g., "192.168.1.100"
-- To find your IP on Windows: Run 'ipconfig' in terminal
-- To find your IP on Linux/Mac: Run 'ifconfig' or 'ip addr'
-"""
+ 
 
 # ============================================================================
 # SERVER CONFIGURATION
