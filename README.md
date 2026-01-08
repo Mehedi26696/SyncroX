@@ -36,7 +36,7 @@
 
 ## 🎯 What is SyncroX?
 
-**SyncroX** is a comprehensive distributed system built entirely from scratch using Python sockets. It demonstrates advanced networking principles including custom protocol implementations, congestion control algorithms, and real-time synchronization mechanisms.
+**SyncroX** is a **real-time collaborative and communication platform** demonstrating advanced networking concepts including custom TCP protocols, Tahoe/Reno congestion control, RTT estimation, and secure Docker-based code execution — all built entirely from scratch using Python sockets. It features reliable file sharing, instant messaging with image CDN, and synchronous collaborative editing.
 
 <p align="center">
   <img src="App_Screenshots/Landing Page.png" alt="SyncroX Landing Page" width="85%"/>
