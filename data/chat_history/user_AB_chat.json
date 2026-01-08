@@ -1,0 +1,17 @@
+{
+  "username": "AB",
+  "last_updated": 1767848087.8803215,
+  "last_updated_readable": "2026-01-08 10:54:47",
+  "total_messages": 1,
+  "messages": [
+    {
+      "id": "6387_AB_1767848087877",
+      "timestamp": 1767848087.8777719,
+      "datetime": "2026-01-08 10:54:47",
+      "room": "6387",
+      "username": "AB",
+      "message": "Hekki",
+      "type": "text"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "room": "6387",
+  "last_updated": 1767851054.393967,
+  "last_updated_readable": "2026-01-08 11:44:14",
+  "total_messages": 5,
+  "messages": [
+    {
+      "id": "6387_SYSTEM_1767848064968",
+      "timestamp": 1767848064.9689124,
+      "datetime": "2026-01-08 10:54:24",
+      "room": "6387",
+      "username": "SYSTEM",
+      "message": "Mehdi joined the room",
+      "type": "system"
+    },
+    {
+      "id": "6387_SYSTEM_1767848066131",
+      "timestamp": 1767848066.131812,
+      "datetime": "2026-01-08 10:54:26",
+      "room": "6387",
+      "username": "SYSTEM",
+      "message": "AB joined the room",
+      "type": "system"
+    },
+    {
+      "id": "6387_AB_1767848087877",
+      "timestamp": 1767848087.8777719,
+      "datetime": "2026-01-08 10:54:47",
+      "room": "6387",
+      "username": "AB",
+      "message": "Hekki",
+      "type": "text"
+    },
+    {
+      "id": "6387_Mehdi_1767848101755",
+      "timestamp": 1767848101.755718,
+      "datetime": "2026-01-08 10:55:01",
+      "room": "6387",
+      "username": "Mehdi",
+      "message": "chat_img_6387_2.png",
+      "type": "image"
+    },
+    {
+      "id": "6387_SYSTEM_1767851054374",
+      "timestamp": 1767851054.374853,
+      "datetime": "2026-01-08 11:44:14",
+      "room": "6387",
+      "username": "SYSTEM",
+      "message": "Mehedi joined the room",
+      "type": "system"
+    }
+  ]
+}

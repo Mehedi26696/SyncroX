@@ -5,8 +5,8 @@
 # ============================================================================
 
 # Change this to your server's IP address for multi-device access
-# SERVER_HOST = "10.22.39.83"
-SERVER_HOST = "127.0.0.1"
+SERVER_HOST = "10.22.39.83"
+# SERVER_HOST = "127.0.0.1"
 
 # Server ports (usually don't need to change these)
 CHAT_PORT = 9009
@@ -44,5 +44,5 @@ DEFAULT_RWND = 32
 HANDSHAKE_TIMEOUT = 5.0
 TERMINATION_TIMEOUT = 3.0
 MAX_RETRIES = 5
-UDP_RECV_TIMEOUT = 1.0
+UDP_RECV_TIMEOUT = 2.0
 TOTAL_DOWNLOAD_TIMEOUT = 30.0

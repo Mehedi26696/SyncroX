@@ -1,0 +1,10 @@
+{
+  "timestamp": 1767845827.5437684,
+  "language": "cpp",
+  "success": true,
+  "return_code": 0,
+  "time_ms": 1353,
+  "stdout": "9\n",
+  "stderr": "",
+  "formatted_output": "[language=cpp, return_code=0, time=1353 ms, success=True]\n9"
+}

@@ -1,0 +1,3 @@
+# Python code
+# Start writing your code here...
+print(56)
