@@ -1,223 +1,372 @@
+<!-- Animated Header Banner -->
 <p align="center">
-  <img src="assets/logo.png" alt="SyncroX Logo" width="220"/>
+  <img src="assets/logo.png" alt="SyncroX Logo" width="180"/>
 </p>
 
-# SyncroX: Advanced Real-Time Collaboration System
-**Technical Reference Manual & Project Report**
+<h1 align="center">
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=28&pause=1000&color=6366F1&center=true&vCenter=true&random=false&width=435&lines=🚀+SyncroX;Real-Time+Collaboration;Built+with+Python+Sockets" alt="Typing SVG" />
+</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10+-blue.svg?style=flat-square" alt="Python">
-  <img src="https://img.shields.io/badge/Streamlit-1.36.0-FF4B4B.svg?style=flat-square" alt="Streamlit">
-  <img src="https://img.shields.io/badge/Docker-Required-2496ED.svg?style=flat-square" alt="Docker">
-  <img src="https://img.shields.io/badge/Protocol-Reliable_UDP-orange.svg?style=flat-square" alt="Reliable UDP">
+  <strong>🌐 Advanced Real-Time Collaboration System</strong>
+  <br/>
+  <sub>A distributed networking system showcasing custom protocol implementations</sub>
 </p>
 
-**SyncroX** is a distributed system demonstrating advanced networking principles. It features a custom **Reliable UDP** protocol with Tahoe/Reno congestion control, a **TCP Chat** system with a custom Application Layer Protocol, a **Collaborative Code Editor** using centralized state synchronization, and a secure **Docker-based Code Execution Engine**.
+<p align="center">
+  <a href="#-quick-start"><img src="https://img.shields.io/badge/Quick_Start-→-6366F1?style=for-the-badge" alt="Quick Start"/></a>
+  <a href="#-screenshots"><img src="https://img.shields.io/badge/Screenshots-→-10B981?style=for-the-badge" alt="Screenshots"/></a>
+  <a href="https://github.com/Abs-Futy7/SyncroX"><img src="https://img.shields.io/badge/View_on_GitHub-→-181717?style=for-the-badge&logo=github" alt="GitHub"/></a>
+</p>
 
----
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Streamlit-1.36.0-FF4B4B?style=flat-square&logo=streamlit&logoColor=white" alt="Streamlit">
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker">
+  <img src="https://img.shields.io/badge/Protocol-Reliable_UDP-FF6B35?style=flat-square" alt="Reliable UDP">
+  <img src="https://img.shields.io/badge/TCP-Chat_Protocol-00C853?style=flat-square" alt="TCP">
+</p>
 
-## 📚 Table of Contents
+<br/>
 
-1. [System Architecture](#-system-architecture)
-2. [Deep Dive: Reliable UDP Protocol](#-deep-dive-reliable-udp-protocol)
-   - [Packet Structure & Header](#packet-structure)
-   - [RTT Estimation (Jacobson/Karels Algorithm)](#rtt-estimation-mathematics)
-   - [Congestion Control State Machine](#congestion-control-state-machine)
-3. [Deep Dive: TCP Chat Protocol](#-deep-dive-tcp-chat-protocol)
-   - [Command Reference](#chat-command-reference)
-   - [CDN & Lazy Loading](#cdn-architecture)
-4. [Deep Dive: Collaborative Editor](#-deep-dive-collaborative-editor)
-   - [Synchronization & Concurrency](#synchronization-protocol)
-5. [Deep Dive: Secure Code Execution](#-deep-dive-secure-code-execution)
-   - [Docker Security Audit](#docker-security-audit)
-6. [Deep Dive: Room Management](#-deep-dive-room-management)
-7. [Installation & Setup](#-installation--setup)
-8. [Authors & Attribution](#-authors--attribution)
+<!-- Fancy Divider -->
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif" width="100%">
+</p>
 
----
+## 🎯 What is SyncroX?
 
-## 🏗 System Architecture
+**SyncroX** is a comprehensive distributed system built entirely from scratch using Python sockets. It demonstrates advanced networking principles including custom protocol implementations, congestion control algorithms, and real-time synchronization mechanisms.
 
-The system follows a microservices-pattern where independent servers handle distinct domains, minimizing failure domains.
+<p align="center">
+  <img src="App_Screenshots/Landing Page.png" alt="SyncroX Landing Page" width="85%"/>
+</p>
 
-### Service Map
-| Service | Port | Transport | Role |
-|:---|:---|:---|:---|
-| **Frontend** | 8501 | HTTP | Streamlit Gateway (User Interface) |
-| **Room Manager** | 9013 | TCP | **Single Source of Truth** for room lifecycle/validity |
-| **Chat Svc** | 9009 | TCP | Messaging, History, Image Broadcast |
-| **File Control** | 9010 | TCP | Listing files, signaling transfer Intent |
-| **File Data** | 9011 | UDP | High-speed Reliable Data Transfer (RDT) |
-| **Collab Svc** | 9011 | TCP | Doc sync, identifying active users |
-| **Exec Svc** | 9012 | TCP | Docker spawning, stdout/stderr streaming |
+<br/>
 
----
+## ⚡ Key Features
 
-## 📡 Deep Dive: Reliable UDP Protocol
+<table>
+<tr>
+<td width="50%">
 
-We implemented a **Reliable Data Transfer (RDT 3.0+)** protocol over UDP, simulating TCP features like sliding windows, cumulative ACKs, and congestion control.
+### 📡 Reliable UDP Protocol
+- Custom **RDT 3.0+** implementation
+- Sliding windows with cumulative ACKs
+- **Tahoe** & **Reno** congestion control
+- Real-time RTT estimation
 
-### Packet Structure
-All packets are UTF-8 JSON encoded.
+</td>
+<td width="50%">
 
+### 💬 Real-time Chat System
+- Custom TCP application layer protocol
+- **Image CDN** with lazy loading
+- Instant message broadcast
+- Persistent chat history
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 📝 Collaborative Code Editor
+- Live document synchronization
+- Multi-user editing support
+- 500ms update frequency
+- Last-Write-Wins conflict resolution
+
+</td>
+<td width="50%">
+
+### 🐳 Secure Code Execution
+- Docker-sandboxed environment
+- Network isolation (`--network=none`)
+- Resource limits (CPU, RAM, PIDs)
+- Ephemeral containers
+
+</td>
+</tr>
+</table>
+
+<br/>
+
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif" width="100%">
+</p>
+
+## 📸 Screenshots
+
+<details open>
+<summary><strong>🖥️ Application Interface</strong></summary>
+<br/>
+
+<table align="center">
+<tr>
+<td align="center" width="50%">
+<img src="App_Screenshots/Home Page.png" alt="Dashboard" width="100%"/>
+<br/><strong>🏠 Home Dashboard</strong>
+</td>
+<td align="center" width="50%">
+<img src="App_Screenshots/File Transfer.png" alt="File Transfer" width="100%"/>
+<br/><strong>📁 File Transfer</strong>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%">
+<img src="App_Screenshots/Code Editor Part 1.png" alt="Code Editor" width="100%"/>
+<br/><strong>💻 Code Editor</strong>
+</td>
+<td align="center" width="50%">
+<img src="App_Screenshots/Code Editor Part 2.png" alt="Execution" width="100%"/>
+<br/><strong>⚡ Code Execution</strong>
+</td>
+</tr>
+</table>
+
+</details>
+
+<details>
+<summary><strong>📊 Congestion Control Analytics</strong></summary>
+<br/>
+
+<table align="center">
+<tr>
+<td align="center" width="50%">
+<img src="App_Screenshots/Congestion Control Part 1.png" alt="RTT and CWND" width="100%"/>
+<br/><strong>📈 RTT vs Chunk Sequence & CWND vs Event Sequence</strong>
+</td>
+<td align="center" width="50%">
+<img src="App_Screenshots/Congestion Control Part 2.png" alt="Window Size" width="100%"/>
+<br/><strong>📈 Window Size vs Transmission Round</strong>
+</td>
+</tr>
+</table>
+
+</details>
+
+<br/>
+
+## 🏗️ Architecture
+
+<p align="center">
+  <img src="App_Screenshots/Architecture.png" alt="System Architecture" width="90%"/>
+</p>
+
+<details>
+<summary><strong>📋 Service Details</strong></summary>
+<br/>
+
+| Service | Port | Protocol | Description |
+|:--------|:----:|:--------:|:------------|
+| 🖥️ **Frontend** | `8501` | HTTP | Streamlit UI Gateway |
+| 🔑 **Room Manager** | `9013` | TCP | Room lifecycle management |
+| 💬 **Chat Service** | `9009` | TCP | Messaging & image CDN |
+| 📂 **File Control** | `9010` | TCP | File listing & signaling |
+| 📡 **File Data** | `9011` | UDP | Reliable data transfer |
+| 📝 **Collab Service** | `9011` | TCP | Document synchronization |
+| 🐳 **Exec Service** | `9012` | TCP | Docker code execution |
+
+</details>
+
+<br/>
+
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif" width="100%">
+</p>
+
+## 📡 Technical Deep Dives
+
+<details>
+<summary><strong>🔧 Reliable UDP Protocol</strong></summary>
+<br/>
+
+### Packet Structure (JSON over UDP)
 ```json
 {
-  "type": "DATA",           // Packet Type: SYN, SYN-ACK, ACK, DATA, FIN, FIN-ACK
+  "type": "DATA",           // SYN | SYN-ACK | ACK | DATA | FIN | FIN-ACK
   "seq": 105,               // Sequence Number
-  "ack": 105,               // Acknowledgement Number (Next Expected Byte)
-  "rwnd": 64,               // Flow Control: Receiver Window Size (chunks)
-  "room": "ABCD",           // Routing context
-  "filename": "doc.pdf",    // Context
-  "payload_b64": "...",     // Base64 Encoded Binary Chunk (4KB)
-  "session_id": "a1b2c3d4"  // Session Security Token
+  "ack": 105,               // Acknowledgement Number
+  "rwnd": 64,               // Receiver Window Size
+  "room": "ABCD",           // Room context
+  "filename": "doc.pdf",    // File context
+  "payload_b64": "...",     // Base64 encoded chunk (4KB)
+  "session_id": "a1b2c3d4"  // Session token
 }
 ```
 
-### RTT Estimation Mathematics
-We use the **Jacobson/Karels Algorithm** to calculate Key Timeout values.
+### RTT Estimation (Jacobson/Karels)
+| Parameter | Formula | Value |
+|:----------|:--------|:-----:|
+| Smoothed RTT | `(1-α)·SRTT + α·RTTsample` | α = 0.125 |
+| RTT Variance | `(1-β)·RTTVAR + β·|SRTT - RTTsample|` | β = 0.25 |
+| RTO | `SRTT + 4·RTTVAR` | Min: 200ms |
 
-1.  **Sample RTT**: Measured time from `SEND` to `ACK`.
-2.  **Smoothed RTT (SRTT)**:
-    $$SRTT = (1 - \alpha) \cdot SRTT + \alpha \cdot RTT_{sample}$$
-    *Where $\alpha = 0.125$*
-3.  **RTT Variation (RTTVAR)**:
-    $$RTTVAR = (1 - \beta) \cdot RTTVAR + \beta \cdot |SRTT - RTT_{sample}|$$
-    *Where $\beta = 0.25$*
-4.  **Retransmission Timeout (RTO)**:
-    $$RTO = SRTT + 4 \cdot RTTVAR$$
-    *(Clamped to min 200ms)*
+### Congestion Control
+| Event | Tahoe 🐢 | Reno 🦊 |
+|:------|:---------|:--------|
+| **Timeout** | CWND = 1, Slow Start | Same |
+| **3 Dup ACKs** | CWND = 1, Slow Start | CWND = ssthresh + 3, Fast Recovery |
 
-### Congestion Control State Machine
+</details>
 
-The protocol supports real-time switching between **Tahoe** and **Reno**.
+<details>
+<summary><strong>💬 TCP Chat Protocol</strong></summary>
+<br/>
 
-#### Common States
-*   **State 1: Slow Start**: $CWND < ssthresh$.
-    *   Action: $CWND += 1$ per ACK (Exponential Growth).
-*   **State 2: Congestion Avoidance**: $CWND \ge ssthresh$.
-    *   Action: $CWND += 1 / CWND$ per ACK (Linear Growth).
+### Command Reference
+| Command | Direction | Description |
+|:--------|:---------:|:------------|
+| `HELLO <user> <room>` | C → S | Join room |
+| `MSG <content>` | C → S | Send message |
+| `IMG <filename> <b64>` | C → S | Upload image |
+| `GET_IMG <filename>` | C → S | Fetch image |
+| `BYE` | C → S | Disconnect |
 
-#### Loss Handling (The Difference)
+### CDN Lazy Loading
+| Step | Action | Description |
+|:----:|:------:|:------------|
+| **1** | 📤 Broadcast | Server sends metadata only |
+| **2** | 🖼️ Render | Client shows placeholder |
+| **3** | 📥 Fetch | On-demand binary request |
+| **4** | 💾 Cache | Store in `backend/data/cdn/` |
 
-| Event | Algorithm | Action |
-|:---|:---|:---|
-| **Timeout** | **Both** | `ssthresh = CWND / 2`<br>`CWND = 1` (Hard Reset)<br>Enter *Slow Start* |
-| **3 Duplicate ACKs** | **Tahoe** | `ssthresh = CWND / 2`<br>`CWND = 1` (Hard Reset)<br>Enter *Slow Start* |
-| **3 Duplicate ACKs** | **Reno** | `ssthresh = CWND / 2`<br>`CWND = ssthresh + 3` (Fast Recovery)<br>Enter *Congestion Avoidance* |
+</details>
 
----
-
-## 💬 Deep Dive: TCP Chat Protocol
-
-A robust Application Layer Protocol on top of TCP.
-
-### Chat Command Reference
-
-| Command | Arguments | Direction | Description |
-|:---|:---|:---|:---|
-| `HELLO` | `<username> <room>` | C -> S | Authenticate and register socket. |
-| `MSG` | `<content>` | C -> S | Send text message. |
-| `IMG` | `<filename> <b64>` | C -> S | Upload image to server CDN. |
-| `GET_IMG` | `<filename>` | C -> S | Request binary data for an image. |
-| `BYE` | None | C -> S | Graceful disconnect. |
-
-### CDN Architecture
-To optimize bandwidth, images are **lazy-loaded**.
-1.  **Broadcast**: Server sends `{"type": "IMG", "filename": "cat.png"}` (No binary data).
-2.  **Rendering**: Client UI sees the placeholder.
-3.  **Fetch**: Client opens a specific `GET_IMG` request *only* if it needs to render the pixel data.
-4.  **Disk Storage**: Images are stored in `backend/data/cdn/` as raw binaries, not DB blobs.
-
----
-
-## 📝 Deep Dive: Collaborative Editor
-
-Real-time document synchronization engine.
-
-### Synchronization Protocol
-*   **Update Frequency**: 500ms (Client Polling/Push).
-*   **Payload**:
-    ```json
-    {
-      "type": "SET",
-      "room": "ABCD",
-      "content": "def hello_world():\n    print('Hi')",
-      "user": "Alice"
-    }
-    ```
-*   **Conflict Resolution**: **Last-Write-Wins (LWW)** architecture. The server accepts the latest `SET` command timestamp as the Single Source of Truth to simplify concurrency in lab environments.
-
----
-
-## 🛡 Deep Dive: Secure Code Execution
-
-The `code_exec` server acts as a gateway to an ephemeral Docker environment.
-
-### Docker Security Audit
-We use the following security profile for every execution container:
+<details>
+<summary><strong>🛡️ Docker Security Profile</strong></summary>
+<br/>
 
 | Flag | Value | Purpose |
-|:---|:---|:---|
-| `--network` | `none` | **Total Isolation**. Prevents reverse shells or pip installs. |
-| `--memory` | `256m` | Prevents RAM exhaustion (Fork bombs). |
-| `--cpus` | `0.5` | Throttles CPU to prevent neighbor noise. |
-| `--pids-limit`| `64` | Prevents process table exhaustion. |
-| `--rm` | `true` | **Ephemeral**. Container executes and vanishes. |
-| Volume | `/tmp/...` | Code is mounted read-only where possible, output written to temp. |
+|:-----|:------|:--------|
+| `--network` | `none` | Total network isolation |
+| `--memory` | `256m` | Prevent RAM exhaustion |
+| `--cpus` | `0.5` | Fair CPU scheduling |
+| `--pids-limit` | `64` | Prevent fork bombs |
+| `--rm` | `true` | Auto-cleanup containers |
 
----
+</details>
 
-## 🔑 Deep Dive: Room Management
+<br/>
 
-The **Room Management Service (`9013`)** solves the "Ghost Room" problem.
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif" width="100%">
+</p>
 
-*   **Registry**: A thread-safe Set of active room codes.
-*   **Validation API**:
-    *   `CHECK <room>` -> `YES` / `NO`
-    *   Other servers (Chat, Filestore) query this TCP port before accepting a `JOIN`.
-*   **Lifecycle**:
-    *   `CREATE` -> Registers room, sets timestamp.
-    *   **GC (Garbage Collector)**: Background thread scans for empty rooms > 10m inactive and deletes them.
-
----
-
-## 🚀 Installation & Setup
+## 🚀 Quick Start
 
 ### Prerequisites
-*   **Python 3.10+** (Required for match-case syntax)
-*   **Docker Desktop** (Must be running for Exec server)
 
-### 1. Install Dependencies
+```
+✅ Python 3.10+     (required for match-case syntax)
+✅ Docker Desktop   (must be running for code execution)
+✅ pip              (for dependency management)
+```
+
+### Installation
+
 ```bash
+# Clone the repository
+git clone https://github.com/Abs-Futy7/SyncroX.git
+cd SyncroX
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
-```
 
-### 2. Start Servers
-We provide a unified launcher script.
-```bash
-python start_all_servers.py
-```
-*Expected Output: 4 Terminals spawning (Chat, Files, Collab, Exec).*
+# Build Docker image
+docker build -t syncro-sandbox ./backend/code_exec/
 
-### 3. Launch Frontend
-```bash
+# Start servers
+python start_all_servers_venv.py
+
+# Launch frontend (new terminal)
 streamlit run frontend/streamlit_app/app.py
 ```
-*Port 8501 will open automatically.*
 
-### 4. Verification
-1.  **Create Room**: Click "Create New Room". Copy the 4-digit code.
-2.  **Join**: Open a new tab, use the code to join as a second user.
-3.  **Chat**: Send a message. Verify it appears instantly in Tab 2.
-4.  **File Transfer**: Upload a file. Check the "Dashboard" tab to see the "Sawtooth" congestion graph.
+> ⚠️ **Note:** Ensure Docker Desktop is running before starting the servers.
+
+### Verify Installation
+
+| Step | Action | Expected |
+|:----:|:-------|:---------|
+| 1 | Click "Create New Room" | 4-digit code appears |
+| 2 | Open new tab, enter code | Join as second user |
+| 3 | Send chat message | Instant delivery |
+| 4 | Upload file | See congestion graph |
+| 5 | Run code | Docker execution works |
+
+<br/>
+
+## 📁 Project Structure
+
+```
+SyncroX/
+├── 📂 backend/
+│   ├── 📂 code_exec/          # 🐳 Docker execution engine
+│   ├── 📂 collab/             # 📝 Collaborative editor
+│   ├── 📂 file_transfer/      # 📡 UDP file transfer
+│   ├── 📂 room_mgmt/          # 🔑 Room management
+│   └── 📂 tcp_chat/           # 💬 Chat protocol
+├── 📂 frontend/               # 🖥️ Streamlit UI
+├── 📂 App_Screenshots/        # 📸 Screenshots
+├── 📂 assets/                 # 🎨 Branding
+├── 📄 config.py               # ⚙️ Configuration
+├── 📄 requirements.txt        # 📦 Dependencies
+└── 📄 start_all_servers_venv.py  # 🚀 Launcher
+```
+
+<br/>
+
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif" width="100%">
+</p>
+
+## 👨‍💻 Authors
+
+<p align="center">
+  <a href="https://github.com/Mehedi26696">
+    <img src="https://github.com/Mehedi26696.png" width="100" height="100" style="border-radius:50%"/>
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/Abs-Futy7">
+    <img src="https://github.com/Abs-Futy7.png" width="100" height="100" style="border-radius:50%"/>
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Mehedi26696"><strong>H.M. Mehedi Hasan</strong></a>
+  &nbsp;&nbsp;•&nbsp;&nbsp;
+  <a href="https://github.com/Abs-Futy7"><strong>MD. Abu Bakar Siddique</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Mehedi26696">
+    <img src="https://img.shields.io/badge/GitHub-Mehedi26696-181717?style=flat-square&logo=github" alt="GitHub"/>
+  </a>
+  &nbsp;
+  <a href="https://github.com/Abs-Futy7">
+    <img src="https://img.shields.io/badge/GitHub-Abs--Futy7-181717?style=flat-square&logo=github" alt="GitHub"/>
+  </a>
+</p>
+
+<br/>
 
 ---
 
-## 👥 Authors & Attribution
+<p align="center">
+  <strong>Built with ❤️ using Python Sockets & Streamlit</strong>
+</p>
 
-**Course**: CSE 3111 - Computer Networking Lab
+<p align="center">
+  <img src="https://img.shields.io/badge/Made_with-Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Sockets-TCP_&_UDP-10B981?style=for-the-badge" alt="Sockets">
+  <img src="https://img.shields.io/badge/UI-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Streamlit">
+</p>
 
-*   **H.M. Mehedi Hasan** (Roll: 13)
-*   **MD. Abu Bakar Siddique** (Roll: 47)
-
-Built with ❤️ using **Python sockets** and **Streamlit**.
+<p align="center">
+  <sub>⭐ Star this repository if you found it helpful!</sub>
+</p>

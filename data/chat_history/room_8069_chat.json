@@ -1,0 +1,44 @@
+{
+  "room": "8069",
+  "last_updated": 1767845593.7970743,
+  "last_updated_readable": "2026-01-08 10:13:13",
+  "total_messages": 4,
+  "messages": [
+    {
+      "id": "8069_SYSTEM_1767845564677",
+      "timestamp": 1767845564.6772673,
+      "datetime": "2026-01-08 10:12:44",
+      "room": "8069",
+      "username": "SYSTEM",
+      "message": "Mehedi joined the room",
+      "type": "system"
+    },
+    {
+      "id": "8069_SYSTEM_1767845564697",
+      "timestamp": 1767845564.6978421,
+      "datetime": "2026-01-08 10:12:44",
+      "room": "8069",
+      "username": "SYSTEM",
+      "message": "Abu joined the room",
+      "type": "system"
+    },
+    {
+      "id": "8069_Mehedi_1767845577041",
+      "timestamp": 1767845577.041525,
+      "datetime": "2026-01-08 10:12:57",
+      "room": "8069",
+      "username": "Mehedi",
+      "message": "chat_img_8069_1.png",
+      "type": "image"
+    },
+    {
+      "id": "8069_Abu_1767845593797",
+      "timestamp": 1767845593.7970743,
+      "datetime": "2026-01-08 10:13:13",
+      "room": "8069",
+      "username": "Abu",
+      "message": "chat_img_8069_2.png",
+      "type": "image"
+    }
+  ]
+}
